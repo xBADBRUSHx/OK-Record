@@ -1,0 +1,185 @@
+{
+  "schema": "ok-record.recorder-contract.v1",
+  "recorderStates": [
+    "Idle",
+    "Armed",
+    "Recording",
+    "Paused",
+    "CapturePending",
+    "Writing",
+    "Exporting",
+    "Error"
+  ],
+  "sessionLayout": {
+    "rootDirName": "延时录制_Recordings",
+    "timelineId": "Timeline",
+    "framesDirName": "frames",
+    "tempDirName": "temp",
+    "exportsDirName": "exports",
+    "logsDirName": "logs"
+  },
+  "projectLayout": {
+    "documentProjectDirSuffix": "-OK-Record"
+  },
+  "frame": {
+    "schema": "ok-record.frame.v1",
+    "defaultStorageFormat": "jpeg",
+    "defaultExtension": ".jpg",
+    "pngStorageFormat": "png",
+    "pngExtension": ".png",
+    "defaultQualityPreset": "default",
+    "qualityPresets": [
+      {
+        "id": "low",
+        "label": "低",
+        "storageFormat": "jpeg",
+        "extension": ".jpg",
+        "jpegQuality": 60
+      },
+      {
+        "id": "default",
+        "label": "默认",
+        "storageFormat": "jpeg",
+        "extension": ".jpg",
+        "jpegQuality": 80
+      },
+      {
+        "id": "high",
+        "label": "高",
+        "storageFormat": "jpeg",
+        "extension": ".jpg",
+        "jpegQuality": 92
+      },
+      {
+        "id": "lossless",
+        "label": "无损",
+        "storageFormat": "png",
+        "extension": ".png",
+        "jpegQuality": 0
+      }
+    ],
+    "legacyRawStorageFormat": "raw-rgba",
+    "legacyRawExtension": ".rgba",
+    "metadataExtension": ".json",
+    "filenamePrefix": "frame_",
+    "indexDigits": 6
+  },
+  "stepFrame": {
+    "schema": "ok-record.step-result.v1",
+    "defaultDirName": "步骤图_Steps",
+    "filenamePrefix": "step_",
+    "indexDigits": 3,
+    "storageFormat": "png",
+    "extension": ".png"
+  },
+  "manifest": {
+    "schema": "ok-record.manifest.v1",
+    "filename": "manifest.json",
+    "stateAfterManualCapture": "Idle"
+  },
+  "scan": {
+    "schema": "ok-record.scan-result.v1",
+    "sequenceSchema": "ok-record.sequence-scan-result.v1",
+    "activeSessionField": "activeSession",
+    "firstFrameMetadataField": "firstFrameMetadataJson",
+    "exportFrameMetadataConsistentField": "exportFrameMetadataConsistent",
+    "contiguousFramesField": "contiguousFrames",
+    "exportableField": "exportable",
+    "firstMissingFrameIndexField": "firstMissingFrameIndex",
+    "orphanFrameCountField": "orphanFrameCount",
+    "firstOrphanFramePathField": "firstOrphanFramePath",
+    "aspectRatioConsistentField": "aspectRatioConsistent",
+    "aspectRatioGroupsJsonField": "aspectRatioGroupsJson",
+    "majorityAspectRatioKeyField": "majorityAspectRatioKey",
+    "majorityAspectRatioFrameCountField": "majorityAspectRatioFrameCount",
+    "exportBlockReasonField": "exportBlockReason",
+    "invalidSessionsField": "invalidSessions",
+    "hasInvalidSessionsField": "hasInvalidSessions",
+    "invalidSessionCountField": "invalidSessionCount"
+  },
+  "scheduler": {
+    "defaultIntervalMinutes": 0.03333333333333333,
+    "minIntervalMinutes": 0.016666666666666666,
+    "defaultIdleCaptureDelaySeconds": 0,
+    "minIdleCaptureDelaySeconds": 0,
+    "maxIdleCaptureDelaySeconds": 3600,
+    "defaultIdleCaptureMaxWaitSeconds": 5,
+    "minIdleCaptureMaxWaitSeconds": 0,
+    "maxIdleCaptureMaxWaitSeconds": 3600,
+    "defaultCaptureOnlyWhenChanged": true,
+    "documentChangeEvents": [
+      "paint",
+      "draw",
+      "set",
+      "make",
+      "delete",
+      "move",
+      "transform",
+      "paste",
+      "pasteInto",
+      "pasteOutside",
+      "cut",
+      "clearEvent",
+      "crop",
+      "canvasSize",
+      "imageSize",
+      "duplicate",
+      "mergeLayersNew",
+      "mergeLayers",
+      "mergeVisible",
+      "flattenImage",
+      "rasterize",
+      "rasterizeTypeLayer",
+      "placeEvent",
+      "convertMode",
+      "applyStyle",
+      "stroke",
+      "gradientClassEvent",
+      "hueSaturation",
+      "levels",
+      "curves",
+      "invert",
+      "undoEvent",
+      "revert",
+      "open",
+      "close"
+    ]
+  },
+  "activityTimer": {
+    "schema": "ok-record.activity-timer.v1",
+    "stateFilename": "activity-timer.json",
+    "defaultIdleTimeoutSeconds": 10,
+    "minIdleTimeoutSeconds": 1,
+    "maxIdleTimeoutSeconds": 86400
+  },
+  "panelSettings": {
+    "schema": "ok-record.panel-settings.v1",
+    "filename": "panel-settings.json",
+    "frameOutputDirField": "frameOutputDir",
+    "stepOutputDirField": "stepOutputDir",
+    "exportSourceDirField": "exportSourceDir"
+  },
+  "export": {
+    "schema": "ok-record.export-result.v1",
+    "clearRecordingSchema": "ok-record.clear-recording-result.v1",
+    "aspectRatioModes": [
+      "strict",
+      "pad",
+      "majority"
+    ],
+    "progressSchema": "ok-record.export-progress.v1",
+    "progressExtension": ".progress",
+    "defaultDurationSeconds": 10,
+    "defaultHoldSeconds": 0.1,
+    "defaultOutputFps": 30,
+    "defaultMaxWidth": 1920,
+    "defaultCrf": 18,
+    "minDurationSeconds": 1,
+    "maxDurationSeconds": 3600,
+    "maxHoldSeconds": 3600,
+    "minOutputFps": 1,
+    "maxOutputFps": 120,
+    "minMaxWidth": 16,
+    "maxMaxWidth": 16384
+  }
+}
