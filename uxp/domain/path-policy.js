@@ -98,7 +98,7 @@ function resolveRecordingsRootDir(options = {}) {
 function resolveStepOutputDir({ manualStepOutputDir = "", recorderOutputDir = "" } = {}) {
   const manualDir = normalizeNativePath(manualStepOutputDir);
   if (manualDir) {
-    return manualDir;
+    return joinNativePath(manualDir, DEFAULT_STEP_OUTPUT_DIR_NAME);
   }
   return joinNativePath(recorderOutputDir, DEFAULT_STEP_OUTPUT_DIR_NAME);
 }

@@ -853,8 +853,6 @@ async function openExportFolder() {
     }
 
     setRecorderState({ lastError: "" });
-    setStatus(formatRecorderStatus(`已打开导出目录：${folderPath}`));
-    updateControlState();
   } catch (error) {
     setRecorderState({ lastError: formatError(error) });
     setStatus(formatRecorderStatus("打开导出目录失败"));
@@ -981,8 +979,6 @@ async function openFrameOutputDir() {
     }
 
     setRecorderState({ lastError: "" });
-    setStatus(formatRecorderStatus(`已打开序列帧目录：${folderPath}`));
-    updateControlState();
   } catch (error) {
     setRecorderState({ lastError: formatError(error) });
     setStatus(formatRecorderStatus("打开序列帧目录失败"));
@@ -1017,7 +1013,8 @@ async function chooseStepOutputDir() {
       lastError: "",
     });
     queuePersistPanelSettings();
-    const scan = await scanSequenceFrames(nativePath);
+    const stepOutputDir = await getStepOutputDirNativePath();
+    const scan = await scanSequenceFrames(stepOutputDir);
     setRecorderState({
       stepFrameCount: Number(scan.frameCount) || 0,
       lastStepFramePath: scan.lastFramePath || "",
@@ -1025,7 +1022,7 @@ async function chooseStepOutputDir() {
     });
     updateControlState();
     setStatus(formatRecorderStatus("步骤图保存目录已更新"));
-    return nativePath;
+    return stepOutputDir;
   } catch (error) {
     setRecorderState({ lastError: formatError(error) });
     setStatus(formatRecorderStatus("设置步骤图保存目录失败"));
@@ -1053,8 +1050,6 @@ async function openStepOutputDir() {
     }
 
     setRecorderState({ lastError: "" });
-    setStatus(formatRecorderStatus(`已打开步骤图目录：${folderPath}`));
-    updateControlState();
   } catch (error) {
     setRecorderState({ lastError: formatError(error) });
     setStatus(formatRecorderStatus("打开步骤图目录失败"));
@@ -2123,7 +2118,9 @@ function formatFrameOutputDir() {
 }
 
 function formatStepOutputDir() {
-  return recorderState.stepOutputDir || `保存目录下的 ${DEFAULT_STEP_OUTPUT_DIR_NAME}`;
+  return recorderState.stepOutputDir
+    ? pathPolicy.joinNativePath(recorderState.stepOutputDir, DEFAULT_STEP_OUTPUT_DIR_NAME)
+    : `保存目录下的 ${DEFAULT_STEP_OUTPUT_DIR_NAME}`;
 }
 
 function clearScheduledCapture() {

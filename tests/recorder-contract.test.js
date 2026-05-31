@@ -353,9 +353,21 @@ const chooseExportSequenceDirBody = uxpMain.slice(
   uxpMain.indexOf("async function chooseExportSequenceDir"),
   uxpMain.indexOf("async function runScheduledCapture"),
 );
+const openExportFolderBody = uxpMain.slice(
+  uxpMain.indexOf("async function openExportFolder"),
+  uxpMain.indexOf("async function getLocalDocumentationPath"),
+);
 const openFrameOutputDirBody = uxpMain.slice(
   uxpMain.indexOf("async function openFrameOutputDir"),
   uxpMain.indexOf("async function chooseStepOutputDir"),
+);
+const chooseStepOutputDirBody = uxpMain.slice(
+  uxpMain.indexOf("async function chooseStepOutputDir"),
+  uxpMain.indexOf("async function openStepOutputDir"),
+);
+const openStepOutputDirBody = uxpMain.slice(
+  uxpMain.indexOf("async function openStepOutputDir"),
+  uxpMain.indexOf("async function chooseExportSequenceDir"),
 );
 assert(uxpMain.includes("stepFrameCount"), "UXP manual sampling must track the step image count");
 assert(uxpMain.includes("nativeBridge.exportSequence"), "UXP export must support a selected image-sequence directory through the native bridge");
@@ -364,6 +376,14 @@ assert(uxpMain.includes('require("./domain/path-policy")'), "UXP path rules must
 assert(uxpMain.includes("function getRecordingsRootDirNativePath"), "UXP must expose one helper for the actual recordings root path");
 assert(uxpMain.includes("pathPolicy.resolveRecordingsRootDir"), "UXP recordings root helper must derive the native recordings child from the path-policy domain");
 assert(openFrameOutputDirBody.includes("await getRecordingsRootDirNativePath()"), "UXP open sequence-frame directory button must open the actual recordings root");
+assert(chooseStepOutputDirBody.includes("const stepOutputDir = await getStepOutputDirNativePath();"), "UXP step directory picker must scan the resolved Steps child directory");
+assert(chooseStepOutputDirBody.includes("scanSequenceFrames(stepOutputDir)"), "UXP step directory picker must not scan the raw selected parent directory");
+assert(openStepOutputDirBody.includes("await getStepOutputDirNativePath()"), "UXP open step directory button must open the resolved Steps child directory");
+for (const openFolderBody of [openExportFolderBody, openFrameOutputDirBody, openStepOutputDirBody]) {
+  const successBody = openFolderBody.slice(openFolderBody.indexOf("const result = await shell.openPath"), openFolderBody.indexOf("} catch"));
+  assert(!successBody.includes("setStatus("), "folder open success paths must not update panel status after shell.openPath returns");
+  assert(!successBody.includes("updateControlState()"), "folder open success paths must not rerender controls after shell.openPath returns");
+}
 const recorderOutputDirBody = uxpMain.slice(
   uxpMain.indexOf("async function getRecorderOutputDirNativePath"),
   uxpMain.indexOf("async function getStepOutputDirNativePath"),

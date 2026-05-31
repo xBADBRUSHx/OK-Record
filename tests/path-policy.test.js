@@ -83,8 +83,8 @@ assert.strictEqual(
 
 assert.strictEqual(
   pathPolicy.resolveStepOutputDir({ manualStepOutputDir: "D:\\Steps", recorderOutputDir: "E:\\Doc" }),
-  "D:\\Steps",
-  "manual step image folder has highest priority",
+  "D:\\Steps\\步骤图_Steps",
+  "manual step image folder should create the stable Steps child under the selected folder",
 );
 
 assert.strictEqual(
