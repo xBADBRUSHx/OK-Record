@@ -1,0 +1,41 @@
+# Build output
+build/
+out/
+dist/
+native/win/x64/
+native/mac/
+vendor/ffmpeg/
+uxp-hybrid-plugin-sdk*/
+adobe_photoshop_sdk*/
+Photoshop SDK*/
+uxp/win/**/*.uxpaddon
+uxp/win/**/*.pdb
+uxp/win/**/*.ilk
+uxp/win/**/*.lib
+uxp/win/**/*.exp
+uxp/mac/**/*.uxpaddon
+*.ccx
+*.zxp
+*.ccx.sha256
+*.zip.sha256
+
+# Local captures and exports
+recordings/
+延时录制_Recordings/
+步骤图_Steps/
+*.mp4
+*.mov
+*.avi
+*.psd
+*.psb
+*.psdc
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE/editor state
+.vs/
+.vscode/
+*.user
+*.suo

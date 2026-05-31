@@ -1,0 +1,91 @@
+"use strict";
+
+const assert = require("assert");
+const path = require("path");
+
+const repoRoot = path.resolve(__dirname, "..");
+const contract = require(path.join(repoRoot, "shared", "recorder-contract.json"));
+const timer = require(path.join(repoRoot, "uxp", "domain", "painting-timer.js"));
+
+assert.strictEqual(timer.DEFAULT_IDLE_TIMEOUT_SECONDS, contract.activityTimer.defaultIdleTimeoutSeconds);
+assert.strictEqual(timer.MIN_IDLE_TIMEOUT_SECONDS, contract.activityTimer.minIdleTimeoutSeconds);
+assert.strictEqual(timer.MAX_IDLE_TIMEOUT_SECONDS, contract.activityTimer.maxIdleTimeoutSeconds);
+
+const initial = timer.createInitialPaintingTimerState();
+assert.strictEqual(initial.enabled, false);
+assert.strictEqual(initial.active, false);
+assert.strictEqual(initial.ended, false);
+assert.strictEqual(initial.idleTimeoutSeconds, contract.activityTimer.defaultIdleTimeoutSeconds);
+assert.strictEqual(
+  timer.createInitialPaintingTimerState({ idleTimeoutSeconds: 0 }).idleTimeoutSeconds,
+  contract.activityTimer.minIdleTimeoutSeconds,
+);
+assert.strictEqual(
+  timer.createInitialPaintingTimerState({ idleTimeoutSeconds: 999999 }).idleTimeoutSeconds,
+  contract.activityTimer.maxIdleTimeoutSeconds,
+);
+
+const startMs = Date.UTC(2026, 4, 23, 10, 0, 0);
+const armed = timer.armPaintingTimerState(initial, startMs, {
+  idleTimeoutSeconds: 60,
+  waitingReason: "waiting",
+});
+assert.strictEqual(armed.enabled, true);
+assert.strictEqual(armed.active, false);
+assert.strictEqual(armed.idleTimeoutSeconds, 60);
+assert.strictEqual(armed.lastStopReason, "waiting");
+assert.strictEqual(
+  timer.armPaintingTimerState(initial, startMs, { idleTimeoutSeconds: 0 }).idleTimeoutSeconds,
+  contract.activityTimer.minIdleTimeoutSeconds,
+);
+
+const started = timer.startPaintingTimerState(initial, startMs);
+assert.strictEqual(started.enabled, true);
+assert.strictEqual(started.active, true);
+assert.strictEqual(started.activeStartedAtMs, startMs);
+assert.strictEqual(started.idleDeadlineAtMs, startMs + (contract.activityTimer.defaultIdleTimeoutSeconds * 1000));
+assert.strictEqual(timer.getElapsedSeconds(started, startMs + 5000), 5);
+
+const activity = timer.recordPaintingActivityState(started, startMs + 10000, "paint");
+assert.strictEqual(activity.activeStartedAtMs, startMs);
+assert.strictEqual(activity.eventCount, 1);
+assert.strictEqual(activity.lastEventName, "paint");
+assert.strictEqual(activity.idleDeadlineAtMs, startMs + 10000 + (contract.activityTimer.defaultIdleTimeoutSeconds * 1000));
+
+const idleStopped = timer.finishActiveSegment(activity, activity.idleDeadlineAtMs + 60000, timer.IDLE_STOP_REASON);
+assert.strictEqual(idleStopped.active, false);
+assert.strictEqual(
+  idleStopped.accumulatedSeconds,
+  contract.activityTimer.defaultIdleTimeoutSeconds + 10,
+  "idle stop should count only through the idle deadline",
+);
+assert.strictEqual(idleStopped.lastStopReason, timer.IDLE_STOP_REASON);
+
+const restoredActive = timer.settleRestoredState(activity, activity.idleDeadlineAtMs - 1000);
+assert.strictEqual(restoredActive.active, true);
+assert.strictEqual(restoredActive.lastStopReason, "");
+
+const restoredExpired = timer.settleRestoredState(activity, activity.idleDeadlineAtMs);
+assert.strictEqual(restoredExpired.active, false);
+assert.strictEqual(restoredExpired.lastStopReason, timer.IDLE_STOP_REASON);
+
+const ended = timer.endPaintingTimerState(started, startMs + 5000);
+assert.strictEqual(ended.enabled, false);
+assert.strictEqual(ended.active, false);
+assert.strictEqual(ended.ended, true);
+assert.strictEqual(ended.accumulatedSeconds, 5);
+assert.strictEqual(ended.lastStopReason, timer.MANUAL_END_REASON);
+
+const restoredEnded = timer.settleRestoredState({
+  ...ended,
+  enabled: true,
+  active: true,
+  activeStartedAtMs: startMs,
+  idleDeadlineAtMs: startMs + 60000,
+  idleDeadlineAt: new Date(startMs + 60000).toISOString(),
+}, startMs + 1000);
+assert.strictEqual(restoredEnded.enabled, false);
+assert.strictEqual(restoredEnded.active, false);
+assert.strictEqual(restoredEnded.activeStartedAtMs, 0);
+assert.strictEqual(restoredEnded.idleDeadlineAtMs, 0);
+assert.strictEqual(restoredEnded.idleDeadlineAt, "");
