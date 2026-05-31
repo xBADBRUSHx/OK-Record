@@ -525,6 +525,9 @@ assert(localDocumentation.includes("Before recording, set the save folder manual
 assert(localDocumentation.includes("面板最上方的绘画计时用于单独统计实际绘画时间。"), "local documentation must explain the painting timer");
 assert(localDocumentation.includes("timer-state-table"), "local documentation must present painting timer states as a table");
 assert(localDocumentation.includes("OK-Record 设置主要用于控制绘画计时、自动序列帧录制和手动采样。"), "local documentation must keep OK-Record settings text-first");
+assert(localDocumentation.includes("设置好参数后，可以把面板缩到最小，刚好显示绘画计时、开始录制和手动采样三个主要功能。"), "local documentation must explain the compact panel workflow after setup");
+assert(localDocumentation.includes("images/03_Mini面板.jpg"), "local documentation must show the compact panel main-controls screenshot");
+assert(localDocumentation.includes("After setting the parameters, you can shrink the panel to its minimum size"), "local documentation must translate the compact panel workflow");
 assert(localDocumentation.includes("recording-state-table"), "local documentation must present recording and manual capture states as a table");
 assert(localDocumentation.includes("导出设置用于把序列帧合成为 MP4 视频。"), "local documentation must keep export settings text-first");
 for (const recordingImageName of [
@@ -622,6 +625,7 @@ for (const pagesImageName of [
   "04-绘画计时-计时中.jpg",
   "04-绘画计时-空闲等待.jpg",
   "04-绘画计时-结束计时.jpg",
+  "03_Mini面板.jpg",
   "05-录制-初始未开启.jpg",
   "05-录制-开启录制.jpg",
   "05-录制-暂停录制.jpg",

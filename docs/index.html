@@ -267,6 +267,17 @@
       background: #ffffff;
     }
 
+    .screenshot-compact.is-loaded .screenshot-frame {
+      display: flex;
+      padding: 18px;
+      background: #2a2a2a;
+    }
+
+    .screenshot-compact img {
+      width: auto;
+      max-width: 100%;
+    }
+
     .screenshot.is-loaded .screenshot-placeholder {
       display: none;
     }
@@ -492,6 +503,14 @@
 
       <h2 id="record">5. OK-Record 设置</h2>
       <p>OK-Record 设置主要用于控制绘画计时、自动序列帧录制和手动采样。</p>
+      <p>设置好参数后，可以把面板缩到最小，刚好显示绘画计时、开始录制和手动采样三个主要功能。</p>
+      <figure class="screenshot screenshot-compact">
+        <div class="screenshot-frame">
+          <img src="images/03_Mini面板.jpg" alt="OK Record 面板缩到最小时显示三个主要功能" loading="lazy" onload="this.closest('.screenshot').classList.add('is-loaded')" onerror="this.remove()">
+          <span class="screenshot-placeholder">截图待放：OK Record 面板缩到最小时显示三个主要功能。<br><code>images/03_Mini面板.jpg</code></span>
+        </div>
+        <figcaption>OK Record 面板缩到最小时显示三个主要功能。</figcaption>
+      </figure>
       <h3>自动录制</h3>
       <p>点击开始录制后，OK Record 会按采样间隔自动保存序列帧。录制中再次点击按钮可暂停；暂停后再次点击可继续；按住 <code>Alt</code> 点击可清空当前序列帧。</p>
 
@@ -719,6 +738,9 @@
         "OK Record 面板整体界面，标出绘画计时、空闲暂停绘画计时、OK-Record 设置和导出设置。": "OK Record panel overview, showing the painting timer, idle painting pause timer, OK-Record settings, and export settings.",
         "截图待放：OK Record 面板整体界面，标出绘画计时、空闲暂停绘画计时、OK-Record 设置和导出设置。": "Screenshot placeholder: OK Record panel overview, showing the painting timer, idle painting pause timer, OK-Record settings, and export settings.",
         "OK-Record 设置主要用于控制绘画计时、自动序列帧录制和手动采样。": "OK-Record settings mainly control the painting timer, automatic image sequence recording, and Manual Capture.",
+        "设置好参数后，可以把面板缩到最小，刚好显示绘画计时、开始录制和手动采样三个主要功能。": "After setting the parameters, you can shrink the panel to its minimum size and keep the three main controls visible: Painting Timer, Start Recording, and Manual Capture.",
+        "OK Record 面板缩到最小时显示三个主要功能。": "OK Record panel at its minimum size, showing the three main controls.",
+        "截图待放：OK Record 面板缩到最小时显示三个主要功能。": "Screenshot placeholder: OK Record panel at its minimum size, showing the three main controls.",
         "自动录制": "Automatic Recording",
         "点击开始录制后，OK Record 会按采样间隔自动保存序列帧。录制中再次点击按钮可暂停；暂停后再次点击可继续；按住": "After you click Start Recording, OK Record automatically saves image sequence frames by sampling interval. Click the button again while recording to pause; click again after pausing to continue; hold",
         "点击可清空当前序列帧。": "and click to clear the current image sequence frames.",
