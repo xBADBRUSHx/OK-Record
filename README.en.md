@@ -21,7 +21,7 @@ The current public package is a Windows test build. The release page provides tw
 - `OK-Record_20260530.ccx`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
 - `OK-Record_20260530_with-ffmpeg.ccx`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
 
-macOS packages must be built and tested on a real Mac before release.
+The author currently does not have a macOS development environment and cannot deploy or test the macOS version. macOS users need to download the source code and adapt, build, and test it themselves.
 
 ## Features
 
@@ -57,7 +57,7 @@ Recording folder layout:
 - The lightweight build needs FFmpeg available from the system `PATH`.
 - The with-ffmpeg build includes FFmpeg and does not need a separate FFmpeg install.
 - Windows users use the `.ccx` package from the Releases page.
-- macOS users currently need to build from source and report real Photoshop test results.
+- macOS users need to download the source code and adapt, build, and test it themselves.
 
 For the lightweight build, Windows users can install FFmpeg from PowerShell:
 

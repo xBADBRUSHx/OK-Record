@@ -520,6 +520,8 @@ assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.2.0 或更�
 assert(localDocumentation.includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "local documentation must translate the Photoshop version requirement");
 assert(readText("README.md").includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "Chinese README must state the Photoshop version requirement in the download section");
 assert(readText("README.en.md").includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "English README must state the Photoshop version requirement in the download section");
+assert(readText("README.md").includes("作者目前没有 macOS 开发环境，无法部署和测试 macOS 版本。macOS 用户需要下载源代码自行适配、构建和测试。"), "Chinese README must clearly explain the macOS support boundary");
+assert(readText("README.en.md").includes("The author currently does not have a macOS development environment and cannot deploy or test the macOS version."), "English README must clearly explain the macOS support boundary");
 assert(!localDocumentation.includes("images/01-release-download.png"), "local documentation must not keep the retired Release screenshot placeholder");
 assert(!localDocumentation.includes("截图预留"), "local documentation must not keep retired plain placeholder blocks");
 assert(localDocumentation.includes("开始录制前，建议先在面板中手动设置保存目录"), "local documentation must recommend manual save-folder setup first");
