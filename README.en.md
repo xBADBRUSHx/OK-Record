@@ -16,6 +16,8 @@ User guide with screenshots: [OK Record User Guide](https://xbadbrushx.github.io
 
 The current public package is a Windows test build. The release page provides two variants:
 
+★ Only Photoshop 2023 24.2.0 or newer is supported.
+
 - `OK-Record_20260530.ccx`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
 - `OK-Record_20260530_with-ffmpeg.ccx`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
 

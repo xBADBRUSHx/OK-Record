@@ -516,6 +516,10 @@ assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local docume
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
 assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-05-30"'), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
+assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");
+assert(localDocumentation.includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "local documentation must translate the Photoshop version requirement");
+assert(readText("README.md").includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "Chinese README must state the Photoshop version requirement in the download section");
+assert(readText("README.en.md").includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "English README must state the Photoshop version requirement in the download section");
 assert(!localDocumentation.includes("images/01-release-download.png"), "local documentation must not keep the retired Release screenshot placeholder");
 assert(!localDocumentation.includes("截图预留"), "local documentation must not keep retired plain placeholder blocks");
 assert(localDocumentation.includes("开始录制前，建议先在面板中手动设置保存目录"), "local documentation must recommend manual save-folder setup first");
