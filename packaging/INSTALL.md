@@ -1,6 +1,7 @@
 # OK Record Install And Package Notes
 
 OK Record is distributed as two GitHub Release `.ccx` installers and one local user-package `.zip` that contains both installers plus the local user guide.
+The user-package `README.txt` is user-facing only; do not include internal release/upload policy notes in it.
 
 ## Build On Windows
 
