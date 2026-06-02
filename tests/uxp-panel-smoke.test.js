@@ -304,7 +304,7 @@ async function run() {
           schema: "ok-record.update-manifest.v1",
           version: "1.0.1",
           releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
-          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.1/OK-Record_v1.0.1_with-ffmpeg.zip",
+          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.1/OK-Record_with-ffmpeg.ccx",
           summary: "测试更新提醒",
         };
       },

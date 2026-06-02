@@ -412,18 +412,18 @@
       <h2 id="download">1. 下载哪个版本</h2>
       <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0" target="_blank" rel="noopener">Win OK-Record v1.0</a></p>
       <p><strong>★ 仅支持 Photoshop 2023 24.2.0 或更高版本。</strong></p>
-      <p>Release 页面里有两个 Windows 版本：</p>
+      <p>Release 页面里有两个 <code>.ccx</code> 安装文件：</p>
       <ul>
-        <li><span class="step-title">OK-Record_v1.0_with-ffmpeg.zip</span>：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。</li>
-        <li><span class="step-title">OK-Record_v1.0.zip</span>：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。</li>
+        <li><span class="step-title">OK-Record_with-ffmpeg.ccx</span>：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。</li>
+        <li><span class="step-title">OK-Record.ccx</span>：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。</li>
       </ul>
-      <p>插件打开面板时会检查 <code>update.json</code>。如果发现新版本，会在面板提示并引导你打开下载页；更新需要手动下载新版 <code>.zip</code>。</p>
-      <p>如果你不确定选哪个，就下载 <code>with-ffmpeg</code> 版本。</p>
+      <p>插件打开面板时会检查 <code>update.json</code>。如果发现新版本，会在面板提示并引导你打开下载页；更新需要手动下载新版安装文件。</p>
+      <p>如果你不确定选哪个，就下载 <code>OK-Record_with-ffmpeg.ccx</code>。</p>
 
       <h2 id="install">2. 安装插件</h2>
       <ol>
-        <li>下载 <code>.zip</code> 文件。</li>
-        <li>解压 <code>.zip</code> 后，按你的 UXP 加载方式加载解压出来的插件目录。</li>
+        <li>下载 <code>.ccx</code> 文件。</li>
+        <li>双击 <code>.ccx</code>，按 Creative Cloud Desktop 的提示安装。</li>
         <li>安装完成后，重新打开 Photoshop。</li>
         <li>在 Photoshop 增效工具菜单中找到 OK-Record 即可打开插件面板。</li>
       </ol>
@@ -650,7 +650,7 @@
       <p>导出视频默认在 <code>延时录制_Recordings/exports</code> 文件夹里。也可以在 OK Record 面板里点击打开导出目录查看。</p>
 
       <h3>导出失败，提示找不到 FFmpeg</h3>
-      <p>说明你使用的是轻量版，并且电脑没有正确安装 FFmpeg。最简单的解决方式是下载 <code>OK-Record_v1.0_with-ffmpeg.zip</code> 免配置版。</p>
+      <p>说明你使用的是轻量版，并且电脑没有正确安装 FFmpeg。最简单的解决方式是下载 <code>OK-Record_with-ffmpeg.ccx</code> 安装文件。</p>
 
       <h3>录制过程中改了画布尺寸怎么办</h3>
       <p>同一比例的画布尺寸变化会在导出时统一缩放。 如果检测到不同比例的序列帧，OK Record 会让你选择自动补边合并、忽略少数比例帧，或手动清理后再导出。</p>
@@ -686,18 +686,21 @@
         "10. 联系作者": "10. Contact the Author",
         "OK Record 是一个 Photoshop 延时录制插件。它会在绘画时按间隔保存画布快照，最后把这些序列帧导出成 MP4 延时视频。": "OK Record is a Photoshop timelapse recording plugin. It saves canvas snapshots while you paint, then exports those image sequences as an MP4 timelapse video.",
         "它不是实时录屏，所以视频只记录画布结果，不会录到鼠标、菜单、弹窗或其它屏幕内容。": "It is not a live screen recorder. The video records only the canvas result, not the cursor, menus, pop-ups, or other screen content.",
-        "Release 页面里有两个 Windows 版本：": "The Release page provides two Windows versions:",
+        "Release 页面里有两个": "The Release page provides two",
+        "安装文件：": "installers:",
         "★ 仅支持 Photoshop 2023 24.2.0 或更高版本。": "★ Only Photoshop 2023 24.2.0 or newer is supported.",
         "下载页面：": "Download page:",
         "：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。": ": recommended for most users. FFmpeg is included, so you can export videos immediately after installation.",
         "：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。": ": lightweight version. Use it if FFmpeg is already installed or you know how to configure FFmpeg yourself.",
         "插件打开面板时会检查": "When the panel opens, the plugin checks",
-        "。如果发现新版本，会在面板提示并引导你打开下载页；更新需要手动下载新版": ". If a newer version is found, the panel shows a reminder and points you to the download page. Updates require manually downloading the new",
+        "。如果发现新版本，会在面板提示并引导你打开下载页；更新需要手动下载新版安装文件。": ". If a newer version is found, the panel shows a reminder and points you to the download page. Updates require manually downloading the new installer.",
         "。": ".",
         "如果你不确定选哪个，就下载": "If you are not sure which one to choose, download the",
         "版本。": "version.",
         "下载": "Download the",
         "文件。": "file.",
+        "双击": "Double-click",
+        "，按 Creative Cloud Desktop 的提示安装。": "and follow the Creative Cloud Desktop prompts to install.",
         "解压": "Unzip the",
         "后，按你的 UXP 加载方式加载解压出来的插件目录。": "file, then load the extracted plugin directory using your UXP loading workflow.",
         "安装完成后，重新打开 Photoshop。": "After installation, reopen Photoshop.",

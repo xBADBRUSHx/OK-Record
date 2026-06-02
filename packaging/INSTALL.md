@@ -1,6 +1,6 @@
 # OK Record Install And Package Notes
 
-OK Record is distributed as two GitHub Release `.zip` packages.
+OK Record is distributed as two GitHub Release `.ccx` installers and one local user-package `.zip` that contains both installers.
 
 ## Build On Windows
 
@@ -11,14 +11,14 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_v1.0" `
+  -ReleasePackageName "OK-Record" `
   -SealedDate "2026-06-02"
 ```
 
 The build writes files under `dist/`:
 
-- `dist/release/OK-Record_v1.0/`
-- `dist/OK-Record_v1.0.zip`
+- `dist/release/OK-Record/`
+- `dist/OK-Record.ccx`
 
 Local verification runs by default. Do not publish a package built with `-SkipVerify` as a user release.
 
@@ -29,7 +29,7 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_v1.0_with-ffmpeg" `
+  -ReleasePackageName "OK-Record_with-ffmpeg" `
   -SealedDate "2026-06-02" `
   -BundledFfmpegPath "C:\path\to\ffmpeg.exe"
 ```
@@ -38,12 +38,12 @@ The bundled package places FFmpeg under `vendor/ffmpeg/win/x64/` inside the plug
 
 ## Install On Windows
 
-For normal users, download one `.zip` package from GitHub Releases, unzip it, and load the extracted plugin directory with the user's UXP loading workflow.
+For normal users, download one `.ccx` installer from GitHub Releases and install it with Creative Cloud Desktop.
 
 Choose the package variant based on the user:
 
-- `OK-Record_v1.0.zip`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
-- `OK-Record_v1.0_with-ffmpeg.zip`: no-setup package. FFmpeg is included for MP4 export.
+- `OK-Record_with-ffmpeg.ccx`: recommended installer package for normal users. FFmpeg is included for MP4 export.
+- `OK-Record.ccx`: lightweight installer. FFmpeg must be installed separately and available from `PATH`.
 
 For the lightweight package, Windows users can install FFmpeg with:
 
@@ -51,7 +51,7 @@ For the lightweight package, Windows users can install FFmpeg with:
 winget install --id Gyan.FFmpeg.Essentials -e --source winget
 ```
 
-For development inspection, load `dist/release/OK-Record_v1.0/` in UXP Developer Tool.
+For development inspection, load `dist/release/OK-Record/` in UXP Developer Tool.
 
 ## Package Contents
 
@@ -91,9 +91,9 @@ After loading or installing the package, compare the installed payload against t
 
 ```powershell
 .\packaging\verify-installed-payload.ps1 `
-  -ReleaseDir "dist\release\OK-Record_v1.0" `
+  -ReleaseDir "dist\release\OK-Record" `
   -InstalledPluginDir "<installed OK Record plugin directory>" `
-  -OutputPath "dist\OK-Record_v1.0-installed-payload-verification.json"
+  -OutputPath "dist\OK-Record-installed-payload-verification.json"
 ```
 
 Release readiness still depends on a real Photoshop smoke test.

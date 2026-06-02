@@ -6,14 +6,16 @@
 
 这是 OK Record 的 Windows v1.0 发布版，主要用于 Photoshop 画布延时录制、序列帧恢复和 MP4 导出。
 
-发布两个插件 zip：
+GitHub Release 直接提供两个 `.ccx` 安装文件：
 
-- `OK-Record_v1.0_with-ffmpeg.zip`：推荐普通用户下载。内置 FFmpeg，可以直接导出 MP4。
-- `OK-Record_v1.0.zip`：轻量版。需要系统 `PATH` 中能找到 FFmpeg。
+- `OK-Record_with-ffmpeg.ccx`：推荐普通用户下载。内置 FFmpeg，可以直接导出 MP4。
+- `OK-Record.ccx`：轻量版。需要系统 `PATH` 中能找到 FFmpeg。
+
+本地用户包 `OK-Record_v1.0_User-Package.zip` 只包含这两个 `.ccx` 安装文件和使用说明，不上传 GitHub。
 
 主要变化：
 
-- 增加启动时更新提醒，发现新版本后引导用户打开 GitHub Release 下载新版 zip。
+- 增加启动时更新提醒，发现新版本后引导用户打开 GitHub Release 下载新版 `.ccx` 安装文件。
 - 更新提醒的详情文本可以用光标选中并用 Ctrl+C 复制。
 - 清空序列帧目录的快捷操作改为 Ctrl+Shift+Alt 点击录制按钮，并需要确认。
 - 采样间隔最小值固定为 1 秒，输入 0 秒会自动回到 1 秒。
@@ -30,14 +32,16 @@
 
 This is the OK Record Windows v1.0 release for Photoshop canvas time-lapse recording, frame recovery, and MP4 export.
 
-Two plugin zip packages are published:
+The GitHub Release directly provides two `.ccx` installers:
 
-- `OK-Record_v1.0_with-ffmpeg.zip`: recommended for most users. FFmpeg is included, so MP4 export works without extra setup.
-- `OK-Record_v1.0.zip`: lightweight package. Requires FFmpeg to be available from the system `PATH`.
+- `OK-Record_with-ffmpeg.ccx`: recommended for most users. FFmpeg is bundled, so MP4 export works without extra setup.
+- `OK-Record.ccx`: lightweight installer. Requires FFmpeg to be available from the system `PATH`.
+
+The local user package `OK-Record_v1.0_User-Package.zip` contains only these two `.ccx` installers and the user guide. It is not uploaded to GitHub.
 
 Main changes:
 
-- Added an update reminder on panel open. When a newer version is available, the panel points users to the GitHub Release page to download the new zip manually.
+- Added an update reminder on panel open. When a newer version is available, the panel points users to the GitHub Release page to download the new `.ccx` installer manually.
 - Update notice details are selectable and can be copied with Ctrl+C.
 - The clear sequence-frame-directory shortcut is now Ctrl+Shift+Alt click on the record button and requires confirmation.
 - The minimum capture interval is fixed at 1 second. Entering 0 seconds clamps back to 1 second.
