@@ -1,6 +1,6 @@
 # OK Record Install And Package Notes
 
-OK Record is distributed as a Photoshop UXP Hybrid `.ccx` package.
+OK Record is distributed as two GitHub Release `.zip` packages.
 
 ## Build On Windows
 
@@ -18,10 +18,7 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 The build writes files under `dist/`:
 
 - `dist/release/OK-Record_20260602_r2/`
-- `dist/OK-Record_20260602_r2.ccx`
-- `dist/OK-Record_20260602_r2.ccx.sha256`
 - `dist/OK-Record_20260602_r2.zip`
-- `dist/OK-Record_20260602_r2.zip.sha256`
 
 Local verification runs by default. Do not publish a package built with `-SkipVerify` as a user release.
 
@@ -41,23 +38,17 @@ The bundled package places FFmpeg under `vendor/ffmpeg/win/x64/` inside the plug
 
 ## Install On Windows
 
-For normal users, download the `.ccx` package from GitHub Releases and install it with Adobe's plugin installer.
+For normal users, download one `.zip` package from GitHub Releases, unzip it, and load the extracted plugin directory with the user's UXP loading workflow.
 
 Choose the package variant based on the user:
 
-- `OK-Record_20260602_r2.ccx`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
-- `OK-Record_20260602_r2_with-ffmpeg.ccx`: no-setup package. FFmpeg is included for MP4 export.
+- `OK-Record_20260602_r2.zip`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
+- `OK-Record_20260602_r2_with-ffmpeg.zip`: no-setup package. FFmpeg is included for MP4 export.
 
 For the lightweight package, Windows users can install FFmpeg with:
 
 ```powershell
 winget install --id Gyan.FFmpeg.Essentials -e --source winget
-```
-
-On systems where Adobe's Unified Plugin Installer Agent is available, the package can also be installed from PowerShell:
-
-```powershell
-& "C:\Program Files\Common Files\Adobe\Adobe Desktop Common\RemoteComponents\UPI\UnifiedPluginInstallerAgent\UnifiedPluginInstallerAgent.exe" /install "C:\path\OK-Record_20260602_r2.ccx"
 ```
 
 For development inspection, load `dist/release/OK-Record_20260602_r2/` in UXP Developer Tool.

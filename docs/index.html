@@ -414,16 +414,16 @@
       <p><strong>★ 仅支持 Photoshop 2023 24.2.0 或更高版本。</strong></p>
       <p>Release 页面里有两个 Windows 版本：</p>
       <ul>
-        <li><span class="step-title">OK-Record_20260602_r2_with-ffmpeg.ccx</span>：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。</li>
-        <li><span class="step-title">OK-Record_20260602_r2.ccx</span>：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。</li>
+        <li><span class="step-title">OK-Record_20260602_r2_with-ffmpeg.zip</span>：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。</li>
+        <li><span class="step-title">OK-Record_20260602_r2.zip</span>：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。</li>
       </ul>
-      <p>插件打开面板时会检查 <code>update.json</code>。如果发现新版本，会在面板提示并引导你打开下载页；更新仍然需要手动下载 <code>.ccx</code> 后重新安装。</p>
+      <p>插件打开面板时会检查 <code>update.json</code>。如果发现新版本，会在面板提示并引导你打开下载页；更新需要手动下载新版 <code>.zip</code>。</p>
       <p>如果你不确定选哪个，就下载 <code>with-ffmpeg</code> 版本。</p>
 
       <h2 id="install">2. 安装插件</h2>
       <ol>
-        <li>下载 <code>.ccx</code> 文件。</li>
-        <li>双击 <code>.ccx</code> 安装。</li>
+        <li>下载 <code>.zip</code> 文件。</li>
+        <li>解压 <code>.zip</code> 后，按你的 UXP 加载方式加载解压出来的插件目录。</li>
         <li>安装完成后，重新打开 Photoshop。</li>
         <li>在 Photoshop 增效工具菜单中找到 OK-Record 即可打开插件面板。</li>
       </ol>
@@ -448,7 +448,7 @@
         </div>
         <figcaption>Photoshop 中打开 OK Record 插件面板。</figcaption>
       </figure>
-      <p>如果双击 <code>.ccx</code> 没有反应，说明当前电脑可能缺少 Adobe 的插件安装组件。此时可以先安装 Creative Cloud Desktop，或使用 Adobe 的插件安装工具安装 <code>.ccx</code>。</p>
+      <p>如果你的加载工具没有刷新，请先关闭 Photoshop，重新加载解压后的插件目录，再打开 Photoshop。</p>
 
       <h2 id="before">3. 录制前建议</h2>
       <p>开始录制前，建议先在面板中手动设置保存目录，这样后续更容易找到录制文件。</p>
@@ -650,7 +650,7 @@
       <p>导出视频默认在 <code>延时录制_Recordings/exports</code> 文件夹里。也可以在 OK Record 面板里点击打开导出目录查看。</p>
 
       <h3>导出失败，提示找不到 FFmpeg</h3>
-      <p>说明你使用的是轻量版，并且电脑没有正确安装 FFmpeg。最简单的解决方式是下载 <code>OK-Record_20260602_r2_with-ffmpeg.ccx</code> 免配置版。</p>
+      <p>说明你使用的是轻量版，并且电脑没有正确安装 FFmpeg。最简单的解决方式是下载 <code>OK-Record_20260602_r2_with-ffmpeg.zip</code> 免配置版。</p>
 
       <h3>录制过程中改了画布尺寸怎么办</h3>
       <p>同一比例的画布尺寸变化会在导出时统一缩放。 如果检测到不同比例的序列帧，OK Record 会让你选择自动补边合并、忽略少数比例帧，或手动清理后再导出。</p>
@@ -692,14 +692,14 @@
         "：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。": ": recommended for most users. FFmpeg is included, so you can export videos immediately after installation.",
         "：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。": ": lightweight version. Use it if FFmpeg is already installed or you know how to configure FFmpeg yourself.",
         "插件打开面板时会检查": "When the panel opens, the plugin checks",
-        "。如果发现新版本，会在面板提示并引导你打开下载页；更新仍然需要手动下载": ". If a newer version is found, the panel shows a reminder and points you to the download page. Updates still require manually downloading the",
-        "后重新安装。": "file and reinstalling it.",
+        "。如果发现新版本，会在面板提示并引导你打开下载页；更新需要手动下载新版": ". If a newer version is found, the panel shows a reminder and points you to the download page. Updates require manually downloading the new",
+        "。": ".",
         "如果你不确定选哪个，就下载": "If you are not sure which one to choose, download the",
         "版本。": "version.",
         "下载": "Download the",
         "文件。": "file.",
-        "双击": "Double-click the",
-        "安装。": "to install.",
+        "解压": "Unzip the",
+        "后，按你的 UXP 加载方式加载解压出来的插件目录。": "file, then load the extracted plugin directory using your UXP loading workflow.",
         "安装完成后，重新打开 Photoshop。": "After installation, reopen Photoshop.",
         "在 Photoshop 增效工具菜单中找到 OK-Record 即可打开插件面板。": "Find OK-Record in Photoshop's Plugins menu to open the plugin panel.",
         "Creative Cloud Desktop 安装确认窗口。": "Creative Cloud Desktop installation confirmation window.",
@@ -708,8 +708,7 @@
         "截图待放：Creative Cloud Desktop 显示 OK Record 已安装。": "Screenshot placeholder: Creative Cloud Desktop showing OK Record installed.",
         "Photoshop 中打开 OK Record 插件面板。": "OK Record plugin panel opened in Photoshop.",
         "截图待放：Photoshop 中打开 OK Record 插件面板。": "Screenshot placeholder: OK Record plugin panel opened in Photoshop.",
-        "如果双击": "If double-clicking",
-        "没有反应，说明当前电脑可能缺少 Adobe 的插件安装组件。此时可以先安装 Creative Cloud Desktop，或使用 Adobe 的插件安装工具安装": "does nothing, this computer may be missing Adobe's plugin installation component. Install Creative Cloud Desktop first, or use Adobe's plugin installation tool to install the",
+        "如果你的加载工具没有刷新，请先关闭 Photoshop，重新加载解压后的插件目录，再打开 Photoshop。": "If your loading tool does not refresh, close Photoshop first, reload the extracted plugin directory, then open Photoshop again.",
         "。": ".",
         "开始录制前，建议先在面板中手动设置保存目录，这样后续更容易找到录制文件。": "Before recording, set the save folder manually in the panel first so recording files are easier to find later.",
         "如果没有手动设置保存目录，OK Record 会自动存放到 Photoshop 文档的保存路径附近。": "If you do not set a save folder manually, OK Record automatically saves near the saved Photoshop document.",

@@ -8,20 +8,20 @@ It does not continuously record your screen. Instead, it saves snapshots of the 
 
 ## Download
 
-Download the `.ccx` package from GitHub Releases:
+Download the `.zip` package from GitHub Releases:
 
 [Win OK-Record](https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02-r2)
 
 User guide with screenshots: [OK Record User Guide](https://xbadbrushx.github.io/OK-Record/)
 
-When the panel opens, the plugin checks the public version. If a newer version is available, it prompts the user to open the download page and manually reinstall the `.ccx`.
+When the panel opens, the plugin checks the public version. If a newer version is available, it prompts the user to open the download page and manually download the new `.zip`.
 
 The current public package is a Windows test build. The release page provides two variants:
 
 ★ Only Photoshop 2023 24.2.0 or newer is supported.
 
-- `OK-Record_20260602_r2.ccx`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
-- `OK-Record_20260602_r2_with-ffmpeg.ccx`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
+- `OK-Record_20260602_r2.zip`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
+- `OK-Record_20260602_r2_with-ffmpeg.zip`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
 
 The author currently does not have a macOS development environment and cannot deploy or test the macOS version. macOS users need to download the source code and adapt, build, and test it themselves.
 
@@ -58,7 +58,7 @@ Recording folder layout:
 - Photoshop must be able to load UXP Hybrid plugins.
 - The lightweight build needs FFmpeg available from the system `PATH`.
 - The with-ffmpeg build includes FFmpeg and does not need a separate FFmpeg install.
-- Windows users use the `.ccx` package from the Releases page.
+- Windows users use the `.zip` package from the Releases page.
 - macOS users need to download the source code and adapt, build, and test it themselves.
 
 For the lightweight build, Windows users can install FFmpeg from PowerShell:

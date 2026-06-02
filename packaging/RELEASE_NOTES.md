@@ -6,8 +6,8 @@ This Windows test build focuses on Photoshop canvas time-lapse recording, recove
 
 Two package variants are published:
 
-- `OK-Record_20260602_r2.ccx`: lightweight package. Requires FFmpeg on system `PATH`.
-- `OK-Record_20260602_r2_with-ffmpeg.ccx`: no-setup package. Includes FFmpeg under `vendor/ffmpeg/win/x64/`.
+- `OK-Record_20260602_r2.zip`: lightweight package. Requires FFmpeg on system `PATH`.
+- `OK-Record_20260602_r2_with-ffmpeg.zip`: no-setup package. Includes FFmpeg under `vendor/ffmpeg/win/x64/`.
 
 ## Safety Fix
 
@@ -16,7 +16,7 @@ Two package variants are published:
 ## Update Reminder
 
 - The panel now checks a static GitHub Pages `update.json` on open and shows a notice when a newer public version is available.
-- Updates still require the user to open the GitHub Release page, download a `.ccx`, and reinstall manually.
+- Updates still require the user to open the GitHub Release page and download a new `.zip` package manually.
 
 ## Recording
 
