@@ -10,7 +10,7 @@ It does not continuously record your screen. Instead, it saves snapshots of the 
 
 Download the `.zip` package from GitHub Releases:
 
-[Win OK-Record](https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02-r2)
+[Win OK-Record v1.0](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0)
 
 User guide with screenshots: [OK Record User Guide](https://xbadbrushx.github.io/OK-Record/)
 
@@ -20,8 +20,8 @@ The current public package is a Windows test build. The release page provides tw
 
 ★ Only Photoshop 2023 24.2.0 or newer is supported.
 
-- `OK-Record_20260602_r2.zip`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
-- `OK-Record_20260602_r2_with-ffmpeg.zip`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
+- `OK-Record_v1.0.zip`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
+- `OK-Record_v1.0_with-ffmpeg.zip`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
 
 The author currently does not have a macOS development environment and cannot deploy or test the macOS version. macOS users need to download the source code and adapt, build, and test it themselves.
 
@@ -85,7 +85,7 @@ Windows package:
 ```powershell
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602_r2" `
+  -ReleasePackageName "OK-Record_v1.0" `
   -SealedDate "2026-06-02"
 ```
 
@@ -94,7 +94,7 @@ Windows package with bundled FFmpeg:
 ```powershell
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602_r2_with-ffmpeg" `
+  -ReleasePackageName "OK-Record_v1.0_with-ffmpeg" `
   -SealedDate "2026-06-02" `
   -BundledFfmpegPath "C:\path\to\ffmpeg.exe"
 ```

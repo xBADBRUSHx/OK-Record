@@ -266,7 +266,7 @@ async function run() {
       },
     },
     versions: {
-      plugin: "0.1.3",
+      plugin: "1.0.0",
     },
     storage: {
       localFileSystem: {
@@ -302,9 +302,9 @@ async function run() {
       async json() {
         return {
           schema: "ok-record.update-manifest.v1",
-          version: "0.1.4",
-          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-03",
-          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/win-ok-record-2026-06-03/OK-Record_20260603_with-ffmpeg.ccx",
+          version: "1.0.1",
+          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
+          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.1/OK-Record_v1.0.1_with-ffmpeg.zip",
           summary: "测试更新提醒",
         };
       },
@@ -566,7 +566,7 @@ async function run() {
   assert.strictEqual(openExternalCalls.length, 1, "download-page flyout menu must open one external URL");
   assert.strictEqual(
     openExternalCalls[0].url,
-    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02-r2",
+    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0",
     "download-page flyout menu must open the current public release before a newer manifest is fetched",
   );
 
@@ -598,8 +598,8 @@ async function run() {
   assert.strictEqual(openPathCalls.length, 1, "only the panel flyout documentation action should open documentation");
   assert.strictEqual(fetchCalls.length, 1, "panel show must fetch the static update manifest once");
   assert.strictEqual(fetchCalls[0], "https://xbadbrushx.github.io/OK-Record/update.json", "panel update check must read the GitHub Pages update manifest");
-  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 0.1.4", "newer update manifest must show an update notice");
-  assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：0.1.3"), "update notice must show the installed plugin version");
+  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.1", "newer update manifest must show an update notice");
+  assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：1.0.0"), "update notice must show the installed plugin version");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("面板菜单：下载页_Download Page"), "update notice must point users to the download-page menu action");
 
   const numberInputs = document.querySelectorAll(".ok-record-number-input");

@@ -11,14 +11,14 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602_r2" `
+  -ReleasePackageName "OK-Record_v1.0" `
   -SealedDate "2026-06-02"
 ```
 
 The build writes files under `dist/`:
 
-- `dist/release/OK-Record_20260602_r2/`
-- `dist/OK-Record_20260602_r2.zip`
+- `dist/release/OK-Record_v1.0/`
+- `dist/OK-Record_v1.0.zip`
 
 Local verification runs by default. Do not publish a package built with `-SkipVerify` as a user release.
 
@@ -29,7 +29,7 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602_r2_with-ffmpeg" `
+  -ReleasePackageName "OK-Record_v1.0_with-ffmpeg" `
   -SealedDate "2026-06-02" `
   -BundledFfmpegPath "C:\path\to\ffmpeg.exe"
 ```
@@ -42,8 +42,8 @@ For normal users, download one `.zip` package from GitHub Releases, unzip it, an
 
 Choose the package variant based on the user:
 
-- `OK-Record_20260602_r2.zip`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
-- `OK-Record_20260602_r2_with-ffmpeg.zip`: no-setup package. FFmpeg is included for MP4 export.
+- `OK-Record_v1.0.zip`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
+- `OK-Record_v1.0_with-ffmpeg.zip`: no-setup package. FFmpeg is included for MP4 export.
 
 For the lightweight package, Windows users can install FFmpeg with:
 
@@ -51,7 +51,7 @@ For the lightweight package, Windows users can install FFmpeg with:
 winget install --id Gyan.FFmpeg.Essentials -e --source winget
 ```
 
-For development inspection, load `dist/release/OK-Record_20260602_r2/` in UXP Developer Tool.
+For development inspection, load `dist/release/OK-Record_v1.0/` in UXP Developer Tool.
 
 ## Package Contents
 
@@ -91,9 +91,9 @@ After loading or installing the package, compare the installed payload against t
 
 ```powershell
 .\packaging\verify-installed-payload.ps1 `
-  -ReleaseDir "dist\release\OK-Record_20260602_r2" `
+  -ReleaseDir "dist\release\OK-Record_v1.0" `
   -InstalledPluginDir "<installed OK Record plugin directory>" `
-  -OutputPath "dist\OK-Record_20260602_r2-installed-payload-verification.json"
+  -OutputPath "dist\OK-Record_v1.0-installed-payload-verification.json"
 ```
 
 Release readiness still depends on a real Photoshop smoke test.
