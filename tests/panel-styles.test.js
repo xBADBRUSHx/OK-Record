@@ -126,6 +126,9 @@ assert(exportNoticeCss.includes("flex: 0 0 auto"), "export notice must not shrin
 assert(exportNoticeCss.includes("margin: 0"), "hidden export notice must not leave stray spacing");
 assert(styles.includes(".ok-record-export-notice-visible {\n    display: flex;\n    margin-top: 12px;"), "visible export notice must sit 12px below the export button");
 assert(exportNoticeBodyCss.includes("font-size: 13px"), "export notice details must stay compact instead of using full control text size");
+assert(exportNoticeBodyCss.includes("resize: none"), "export notice details must not expose textarea resizing chrome");
+assert(exportNoticeBodyCss.includes("cursor: text"), "export notice details must allow cursor-based text selection");
+assert(exportNoticeBodyCss.includes("user-select: text"), "export notice details must allow Ctrl+C copying after selection");
 
 assert(fieldCss.includes("font-size: 16px"), "field labels must use the requested 16px ordinary text size");
 assert(fieldCss.includes("line-height: 20px"), "field labels must keep a 20px line height for 16px ordinary text");

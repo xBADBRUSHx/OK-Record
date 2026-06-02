@@ -10,16 +10,18 @@ It does not continuously record your screen. Instead, it saves snapshots of the 
 
 Download the `.ccx` package from GitHub Releases:
 
-[Win OK-Record](https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02)
+[Win OK-Record](https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02-r2)
 
 User guide with screenshots: [OK Record User Guide](https://xbadbrushx.github.io/OK-Record/)
+
+When the panel opens, the plugin checks the public version. If a newer version is available, it prompts the user to open the download page and manually reinstall the `.ccx`.
 
 The current public package is a Windows test build. The release page provides two variants:
 
 ★ Only Photoshop 2023 24.2.0 or newer is supported.
 
-- `OK-Record_20260602.ccx`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
-- `OK-Record_20260602_with-ffmpeg.ccx`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
+- `OK-Record_20260602_r2.ccx`: lightweight build for users who already have FFmpeg installed or want to configure it themselves.
+- `OK-Record_20260602_r2_with-ffmpeg.ccx`: no-setup build with bundled FFmpeg for users who want video export to work out of the box.
 
 The author currently does not have a macOS development environment and cannot deploy or test the macOS version. macOS users need to download the source code and adapt, build, and test it themselves.
 
@@ -83,7 +85,7 @@ Windows package:
 ```powershell
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602" `
+  -ReleasePackageName "OK-Record_20260602_r2" `
   -SealedDate "2026-06-02"
 ```
 
@@ -92,7 +94,7 @@ Windows package with bundled FFmpeg:
 ```powershell
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602_with-ffmpeg" `
+  -ReleasePackageName "OK-Record_20260602_r2_with-ffmpeg" `
   -SealedDate "2026-06-02" `
   -BundledFfmpegPath "C:\path\to\ffmpeg.exe"
 ```

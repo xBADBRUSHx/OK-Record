@@ -11,17 +11,17 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602" `
+  -ReleasePackageName "OK-Record_20260602_r2" `
   -SealedDate "2026-06-02"
 ```
 
 The build writes files under `dist/`:
 
-- `dist/release/OK-Record_20260602/`
-- `dist/OK-Record_20260602.ccx`
-- `dist/OK-Record_20260602.ccx.sha256`
-- `dist/OK-Record_20260602.zip`
-- `dist/OK-Record_20260602.zip.sha256`
+- `dist/release/OK-Record_20260602_r2/`
+- `dist/OK-Record_20260602_r2.ccx`
+- `dist/OK-Record_20260602_r2.ccx.sha256`
+- `dist/OK-Record_20260602_r2.zip`
+- `dist/OK-Record_20260602_r2.zip.sha256`
 
 Local verification runs by default. Do not publish a package built with `-SkipVerify` as a user release.
 
@@ -32,7 +32,7 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record_20260602_with-ffmpeg" `
+  -ReleasePackageName "OK-Record_20260602_r2_with-ffmpeg" `
   -SealedDate "2026-06-02" `
   -BundledFfmpegPath "C:\path\to\ffmpeg.exe"
 ```
@@ -45,8 +45,8 @@ For normal users, download the `.ccx` package from GitHub Releases and install i
 
 Choose the package variant based on the user:
 
-- `OK-Record_20260602.ccx`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
-- `OK-Record_20260602_with-ffmpeg.ccx`: no-setup package. FFmpeg is included for MP4 export.
+- `OK-Record_20260602_r2.ccx`: lightweight package. FFmpeg must be installed separately and available from `PATH`.
+- `OK-Record_20260602_r2_with-ffmpeg.ccx`: no-setup package. FFmpeg is included for MP4 export.
 
 For the lightweight package, Windows users can install FFmpeg with:
 
@@ -57,10 +57,10 @@ winget install --id Gyan.FFmpeg.Essentials -e --source winget
 On systems where Adobe's Unified Plugin Installer Agent is available, the package can also be installed from PowerShell:
 
 ```powershell
-& "C:\Program Files\Common Files\Adobe\Adobe Desktop Common\RemoteComponents\UPI\UnifiedPluginInstallerAgent\UnifiedPluginInstallerAgent.exe" /install "C:\path\OK-Record_20260602.ccx"
+& "C:\Program Files\Common Files\Adobe\Adobe Desktop Common\RemoteComponents\UPI\UnifiedPluginInstallerAgent\UnifiedPluginInstallerAgent.exe" /install "C:\path\OK-Record_20260602_r2.ccx"
 ```
 
-For development inspection, load `dist/release/OK-Record_20260602/` in UXP Developer Tool.
+For development inspection, load `dist/release/OK-Record_20260602_r2/` in UXP Developer Tool.
 
 ## Package Contents
 
@@ -100,9 +100,9 @@ After loading or installing the package, compare the installed payload against t
 
 ```powershell
 .\packaging\verify-installed-payload.ps1 `
-  -ReleaseDir "dist\release\OK-Record_20260602" `
+  -ReleaseDir "dist\release\OK-Record_20260602_r2" `
   -InstalledPluginDir "<installed OK Record plugin directory>" `
-  -OutputPath "dist\OK-Record_20260602-installed-payload-verification.json"
+  -OutputPath "dist\OK-Record_20260602_r2-installed-payload-verification.json"
 ```
 
 Release readiness still depends on a real Photoshop smoke test.

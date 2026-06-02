@@ -1,6 +1,6 @@
 # Documentation Index
 
-Last Updated: 2026-05-30
+Last Updated: 2026-06-02
 Authority: Scoped Document Index
 Read After: `Architecture.md`
 
@@ -11,7 +11,7 @@ Use this index to find stable scoped topic docs. `Architecture.md` is the single
 | Task Domain | Read | Owner Paths | Verification Anchors |
 | --- | --- | --- | --- |
 | architecture contracts, clean-state decision, module boundaries | `Architecture.md` | `uxp/`, `native/src/`, `shared/`, `tests/` | focused JS tests, native recovery tests, UXP smoke |
-| install and package contents | `packaging/INSTALL.md` | `packaging/`, `dist/`, `uxp/`, `docs/index.html`, `docs/images/` | release manifest inspection, installed payload verification, Photoshop runtime smoke |
+| install and package contents | `packaging/INSTALL.md` | `packaging/`, `dist/`, `uxp/`, `docs/index.html`, `docs/update.json`, `docs/images/` | release manifest inspection, installed payload verification, Photoshop runtime smoke |
 | macOS source build and diagnostics | `docs/mac-build.md` | `tools/*-mac.sh`, `packaging/build-release-mac.sh`, `native/src/` | `tools/verify-local-mac.sh`, user Mac runtime report |
 
 ## Document Roles
@@ -24,6 +24,7 @@ Use this index to find stable scoped topic docs. `Architecture.md` is the single
 - `packaging/INSTALL.md`: package construction, package contents, user installation, and installed-payload verification.
 - `docs/*.md`: scoped stable build, package, and platform references.
 - `docs/index.html`: single user guide source for GitHub Pages and packaged local help.
+- `docs/update.json`: static GitHub Pages update manifest used by the panel update reminder.
 - `docs/images/`: screenshot assets used by `docs/index.html` and copied into packages.
 
 ## Mirror Policy

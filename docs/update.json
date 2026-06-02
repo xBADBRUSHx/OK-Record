@@ -1,0 +1,8 @@
+{
+  "schema": "ok-record.update-manifest.v1",
+  "version": "0.1.3",
+  "releaseDate": "2026-06-02",
+  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02-r2",
+  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/win-ok-record-2026-06-02-r2/OK-Record_20260602_r2_with-ffmpeg.ccx",
+  "summary": "0.1.3 增加更新提醒，恢复 Ctrl+Shift+Alt 清空序列帧确认，并修正采样间隔 0 秒误输入。普通用户建议下载 with-ffmpeg 版本。"
+}

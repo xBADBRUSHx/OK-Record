@@ -1,6 +1,6 @@
 # 文档索引
 
-Last Updated: 2026-05-30
+Last Updated: 2026-06-02
 Authority: Scoped Document Index
 Read After: `Architecture.md`
 
@@ -11,7 +11,7 @@ Read After: `Architecture.md`
 | 任务领域 | 阅读 | Owner 路径 | 验证锚点 |
 | --- | --- | --- | --- |
 | 架构契约、干净状态决策、模块边界 | `Architecture.md` | `uxp/`, `native/src/`, `shared/`, `tests/` | focused JS tests, native recovery tests, UXP smoke |
-| 安装与打包内容 | `packaging/INSTALL.md` | `packaging/`, `dist/`, `uxp/`, `docs/index.html`, `docs/images/` | release manifest inspection, installed payload verification, Photoshop runtime smoke |
+| 安装与打包内容 | `packaging/INSTALL.md` | `packaging/`, `dist/`, `uxp/`, `docs/index.html`, `docs/update.json`, `docs/images/` | release manifest inspection, installed payload verification, Photoshop runtime smoke |
 | macOS 源码构建和诊断 | `docs/zh-CN/mac-build.md` | `tools/*-mac.sh`, `packaging/build-release-mac.sh`, `native/src/` | `tools/verify-local-mac.sh`, 用户 Mac 运行时反馈 |
 
 ## 文档职责
@@ -24,6 +24,7 @@ Read After: `Architecture.md`
 - `packaging/INSTALL.md`：打包构建、包内容、用户安装和 installed-payload 校验。
 - `docs/*.md`：稳定的构建、打包、平台主题参考。
 - `docs/index.html`：GitHub Pages 和插件包内本地帮助共用的唯一使用说明源文件。
+- `docs/update.json`：面板更新提醒使用的 GitHub Pages 静态更新清单。
 - `docs/images/`：`docs/index.html` 使用的截图资源，打包时复制进插件包。
 
 ## 镜像规则

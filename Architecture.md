@@ -1,6 +1,6 @@
 # Architecture
 
-Last Updated: 2026-05-30
+Last Updated: 2026-06-02
 
 `Architecture.md` is the level-1 architecture contract map and the single architecture authority for OK Record. Scoped docs may own build, packaging, or platform procedures, but they must not duplicate architecture truth.
 
@@ -131,16 +131,17 @@ WHY: A drawing document should export as one continuous timelapse across pauses 
 
 Status: implemented
 
-Contract: Root docs route development work. `docs/index.html` is the single user-facing documentation source for GitHub Pages and packaged local help. `packaging/INSTALL.md` owns install/package contents. Build and packaging scripts copy `docs/index.html` and `docs/images/` into the installed plugin payload without becoming architecture truth.
+Contract: Root docs route development work. `docs/index.html` is the single user-facing documentation source for GitHub Pages and packaged local help. `docs/update.json` is the static GitHub Pages update manifest consumed by the UXP panel for update reminders only. `packaging/INSTALL.md` owns install/package contents. Build and packaging scripts copy `docs/index.html` and `docs/images/` into the installed plugin payload without becoming architecture truth.
 
 Public GitHub source uploads expose `Architecture.md` as the only developer documentation. Do not include local collaboration docs such as `AGENTS.md`, `PLAN.md`, `Checklist.md`, `docs/README.md`, or scoped docs in the public upload set.
 
-Owners: `README.md`, `AGENTS.md`, `Architecture.md`, `PLAN.md`, `Checklist.md`, `docs/README.md`, `docs/index.html`, `docs/images/`, `packaging/INSTALL.md`, `packaging/`.
+Owners: `README.md`, `AGENTS.md`, `Architecture.md`, `PLAN.md`, `Checklist.md`, `docs/README.md`, `docs/index.html`, `docs/update.json`, `docs/images/`, `packaging/INSTALL.md`, `packaging/`.
 
 Topic docs:
 
 - `docs/README.md`
 - `docs/mac-build.md`
+- `docs/update.json`
 - `packaging/INSTALL.md`
 
 Code anchors:

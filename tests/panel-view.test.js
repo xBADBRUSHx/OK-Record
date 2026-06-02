@@ -122,7 +122,7 @@ function assertPrimaryActionsGroup(group, refs) {
   assert(hasClass(body.children[4], "ok-record-step-row"), "manual sampling button must sit under recording");
   assertPaintingTimerControls(refs);
   assert.strictEqual(textOf(refs.startRecordingButtonNode), "录制中 3 张", "recording button must render status text through panel-view");
-  assert.strictEqual(refs.startRecordingButtonNode.getAttribute("aria-label"), "开始、暂停或继续录制", "recording button must not expose destructive Alt-click affordances");
+  assert.strictEqual(refs.startRecordingButtonNode.getAttribute("aria-label"), "开始、暂停或继续录制；Ctrl+Shift+Alt+点击清空序列帧", "recording button must expose the high-friction clear shortcut");
   assert(hasClass(refs.startRecordingButtonNode.querySelector(".ok-record-record-indicator-slot"), "ok-record-record-indicator-slot"), "recording status must reserve an indicator slot while active");
   assert.strictEqual(textOf(refs.captureNowButtonNode), "手动采样 2 张", "manual sampling button must show the sampled count");
   assert(!hasClass(refs.captureNowButtonNode.querySelector(".ok-record-step-indicator"), "ok-record-step-indicator-hidden"), "manual sampling indicator must be visible after sampling");
@@ -208,11 +208,16 @@ function assertNoticeOnly(refs) {
   assert(hasClass(refs.exportNoticeNode, "ok-record-export-notice-visible"), "shown export notice must become visible");
   assert(hasClass(refs.exportNoticeNode, "ok-record-export-notice-success"), "success notice must use the success tone");
   assert.strictEqual(textOf(refs.exportNoticeTitleNode), "导出完成");
+  assert.strictEqual(refs.exportNoticeBodyNode.tagName, "TEXTAREA", "export notice details must render as selectable text");
+  assert.strictEqual(refs.exportNoticeBodyNode.readOnly, true, "export notice details must be read-only");
+  assert.strictEqual(refs.exportNoticeBodyNode.getAttribute("aria-label"), "导出或更新详情，可选中复制");
+  assert.strictEqual(refs.exportNoticeBodyNode.value, "输出：test.mp4\n质量：默认", "export notice details must be available for Ctrl+C copying");
   assert.strictEqual(textOf(refs.exportNoticeBodyNode), "输出：test.mp4\n质量：默认");
 
   panelView.hideExportNotice(refs);
   assert.strictEqual(refs.exportNoticeNode.className, "ok-record-export-notice", "hidden export notice must reset to its base class");
   assert.strictEqual(textOf(refs.exportNoticeTitleNode), "");
+  assert.strictEqual(refs.exportNoticeBodyNode.value, "");
   assert.strictEqual(textOf(refs.exportNoticeBodyNode), "");
 }
 

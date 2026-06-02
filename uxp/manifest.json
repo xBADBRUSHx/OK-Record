@@ -2,7 +2,7 @@
   "id": "com.badbrush.okrecord",
   "name": "OK Record",
   "manifestVersion": 6,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "main": "main.js",
   "host": {
     "app": "PS",
@@ -54,10 +54,18 @@
   "requiredPermissions": {
     "enableAddon": true,
     "localFileSystem": "request",
+    "network": {
+      "domains": [
+        "https://xbadbrushx.github.io"
+      ]
+    },
     "launchProcess": {
       "extensions": [
         "",
         ".html"
+      ],
+      "schemes": [
+        "https"
       ]
     }
   },

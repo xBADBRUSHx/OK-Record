@@ -180,12 +180,28 @@ module.exports = `
   }
 
   .ok-record-export-notice-body {
+    box-sizing: border-box;
+    display: block;
     flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 72px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    resize: none;
+    background: transparent;
     color: rgba(235, 240, 248, 0.74);
+    font-family: "Segoe UI", "Helvetica Neue", sans-serif;
     font-size: 13px;
     line-height: 18px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    overflow-x: hidden;
+    overflow-y: auto;
+    cursor: text;
+    user-select: text;
   }
 
   .ok-record-field {

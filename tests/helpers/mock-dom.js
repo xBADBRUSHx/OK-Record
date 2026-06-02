@@ -148,6 +148,8 @@ class MockEvent {
     this.target = null;
     this.key = options.key || "";
     this.altKey = Boolean(options.altKey);
+    this.ctrlKey = Boolean(options.ctrlKey);
+    this.shiftKey = Boolean(options.shiftKey);
   }
 
   preventDefault() {

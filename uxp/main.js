@@ -85,6 +85,11 @@ const DEFAULT_STEP_OUTPUT_DIR_NAME = pathPolicy.DEFAULT_STEP_OUTPUT_DIR_NAME;
 const LOCAL_DOCUMENTATION_DIR_NAME = "docs";
 const LOCAL_DOCUMENTATION_FILENAME = "index.html";
 const DOCUMENTATION_PANEL_MENU_ID = "openDocumentation";
+const UPDATE_PANEL_MENU_ID = "openUpdateDownloadPage";
+const UPDATE_MANIFEST_SCHEMA = "ok-record.update-manifest.v1";
+const UPDATE_MANIFEST_URL = "https://xbadbrushx.github.io/OK-Record/update.json";
+const UPDATE_RELEASES_URL_PREFIX = "https://github.com/xBADBRUSHx/OK-Record/releases/";
+const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02-r2";
 const RECORDING_TIMELINE_ID = "Timeline";
 const STEP_FRAME_FILENAME_PREFIX = "step_";
 const STEP_FRAME_INDEX_DIGITS = 3;
@@ -173,24 +178,33 @@ let photoshopUserIdle = false;
 let idleCaptureWaiting = false;
 let documentChangeGeneration = 0;
 let stepCaptureActive = false;
+let updateCheckPromise = null;
+let latestAvailableUpdate = null;
 
 uxp.entrypoints.setup({
   panels: {
     okRecordPanel: {
       menuItems: [
         { id: DOCUMENTATION_PANEL_MENU_ID, label: "文档_Documentation" },
+        { id: UPDATE_PANEL_MENU_ID, label: "下载页_Download Page" },
       ],
       show() {
         showPanel();
       },
       hide() {},
       invokeMenu(id) {
-        if (id !== DOCUMENTATION_PANEL_MENU_ID) {
+        if (id === DOCUMENTATION_PANEL_MENU_ID) {
+          openLocalDocumentation().catch((error) => {
+            console.log("[OK-Record] panel menu documentation action failed:", error);
+          });
           return;
         }
-        openLocalDocumentation().catch((error) => {
-          console.log("[OK-Record] panel menu documentation action failed:", error);
-        });
+        if (id === UPDATE_PANEL_MENU_ID) {
+          openUpdateDownloadPage().catch((error) => {
+            console.log("[OK-Record] panel menu download-page action failed:", error);
+          });
+          return;
+        }
       },
     },
   },
@@ -204,6 +218,8 @@ setTimeout(() => {
 
 function showPanel() {
   renderPanel();
+  showCachedUpdateNotice();
+  queueUpdateCheck();
   restorePanelSettings().catch((error) => {
     setRecorderState({ lastError: `设置恢复失败：${formatError(error)}` });
     updateControlState();
@@ -555,6 +571,62 @@ async function stopRecording() {
   setStatus(formatRecorderStatus(wasRunning ? "录制已停止" : "录制未运行"));
 }
 
+async function clearRecordingTimeline() {
+  try {
+    if (isRecorderBusy()) {
+      throw new Error(`录制器忙碌：${formatRecorderState(recorderState.state)}`);
+    }
+    if (typeof confirm !== "function") {
+      throw new Error("无法显示清空确认弹窗，已取消清空序列帧");
+    }
+    if (!confirm("确定要清空当前序列帧吗？这会删除延时录制_Recordings/frames 里的录制帧，但不会删除已导出的视频。")) {
+      return null;
+    }
+
+    recordingLoopActive = false;
+    recordingPauseRequested = false;
+    await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
+
+    const outputDir = await getRecorderOutputDirNativePath();
+    const result = await nativeBridge.clearRecording({ outputDir });
+    setRecorderState({
+      state: RECORDER_STATES.idle,
+      activeSession: null,
+      frameCount: 0,
+      lastCaptureAt: "",
+      lastExportPath: "",
+      lastExportLogPath: "",
+      lastExportProgress: null,
+      lastExportStatus: EXPORT_STATUSES.idle,
+      ...(recorderState.exportSourceDir ? {} : {
+        exportSourceFrameCount: 0,
+        exportSourceLastFramePath: "",
+        exportSourceAspectRatioConsistent: true,
+        exportSourceAspectRatioGroupsJson: "",
+      }),
+      nextCaptureAt: "",
+      documentDirty: false,
+      lastDirtyAt: "",
+      lastChangeEvent: "",
+      lastSkipAt: "",
+      skippedCaptureCount: 0,
+      lastError: "",
+    });
+    updateHoldSecondsInput(recorderState.exportDurationSeconds);
+    updateControlState();
+    hideExportNotice();
+    setStatus(formatRecorderStatus(`已清空序列帧：${result.framesPath || await getRecordingsRootDirNativePath()}`));
+    return result;
+  } catch (error) {
+    setRecorderState({ state: RECORDER_STATES.error, nextCaptureAt: "", lastError: formatError(error) });
+    updateControlState();
+    setStatus(formatRecorderStatus(`清空序列帧失败：${formatError(error)}`));
+    showExportNotice("清空序列帧失败", [formatError(error)], "error");
+    console.log("[OK-Record] clear recording timeline failed:", error);
+    throw error;
+  }
+}
+
 async function startPaintingTimer() {
   try {
     if (paintingTimerState.enabled) {
@@ -850,6 +922,163 @@ async function openLocalDocumentation() {
     setStatus(formatRecorderStatus("打开使用说明失败"));
     showExportNotice("打开使用说明失败", [formatError(error)], "error");
     console.log("[OK-Record] open local documentation failed:", error);
+    throw error;
+  }
+}
+
+function getCurrentPluginVersion() {
+  return uxp.versions && uxp.versions.plugin ? String(uxp.versions.plugin).trim() : "";
+}
+
+function parseVersionParts(version) {
+  return String(version || "")
+    .split(".")
+    .map((part) => {
+      const match = String(part || "").match(/^\d+/);
+      return match ? Number(match[0]) : 0;
+    });
+}
+
+function compareVersionStrings(candidateVersion, currentVersion) {
+  const candidateParts = parseVersionParts(candidateVersion);
+  const currentParts = parseVersionParts(currentVersion);
+  const partCount = Math.max(candidateParts.length, currentParts.length, 3);
+  for (let index = 0; index < partCount; index += 1) {
+    const candidatePart = candidateParts[index] || 0;
+    const currentPart = currentParts[index] || 0;
+    if (candidatePart > currentPart) {
+      return 1;
+    }
+    if (candidatePart < currentPart) {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+function normalizeUpdateUrl(url, fieldName) {
+  const value = String(url || "").trim();
+  if (!value) {
+    return "";
+  }
+  if (!value.startsWith(UPDATE_RELEASES_URL_PREFIX)) {
+    throw new Error(`更新清单中的 ${fieldName} 不是 OK Record GitHub Release 地址`);
+  }
+  return value;
+}
+
+function normalizeUpdateManifest(payload) {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("更新清单格式无效");
+  }
+  if (payload.schema && payload.schema !== UPDATE_MANIFEST_SCHEMA) {
+    throw new Error(`更新清单 schema 不匹配：${payload.schema}`);
+  }
+
+  const version = String(payload.version || "").trim();
+  if (!version) {
+    throw new Error("更新清单缺少 version");
+  }
+
+  return {
+    version,
+    releasePageUrl: normalizeUpdateUrl(payload.releasePageUrl, "releasePageUrl"),
+    downloadUrl: normalizeUpdateUrl(payload.downloadUrl, "downloadUrl"),
+    summary: String(payload.summary || "").trim(),
+  };
+}
+
+function getUpdateDownloadPageUrl() {
+  return (latestAvailableUpdate && latestAvailableUpdate.releasePageUrl) || DEFAULT_UPDATE_RELEASE_PAGE_URL;
+}
+
+function showUpdateNotice(updateInfo, currentVersion) {
+  const releasePageUrl = updateInfo.releasePageUrl || DEFAULT_UPDATE_RELEASE_PAGE_URL;
+  const lines = [
+    `当前版本：${currentVersion || "未知"}`,
+    `最新版本：${updateInfo.version}`,
+    updateInfo.summary,
+    "面板菜单：下载页_Download Page",
+    `下载页：${releasePageUrl}`,
+  ].filter(Boolean);
+
+  showExportNotice(`发现新版本 ${updateInfo.version}`, lines, "success");
+  setStatus(formatRecorderStatus(`发现新版本 ${updateInfo.version}`));
+}
+
+function showCachedUpdateNotice() {
+  if (!latestAvailableUpdate) {
+    return;
+  }
+  showUpdateNotice(latestAvailableUpdate, getCurrentPluginVersion());
+}
+
+async function checkForUpdates() {
+  const currentVersion = getCurrentPluginVersion();
+  if (!currentVersion || typeof fetch !== "function") {
+    return null;
+  }
+
+  const response = await fetch(UPDATE_MANIFEST_URL);
+  if (!response || response.ok === false) {
+    throw new Error(`更新检查请求失败：${response && response.status ? response.status : "unknown"}`);
+  }
+  if (typeof response.json !== "function") {
+    throw new Error("更新检查响应不能解析为 JSON");
+  }
+
+  const updateInfo = normalizeUpdateManifest(await response.json());
+  if (compareVersionStrings(updateInfo.version, currentVersion) <= 0) {
+    return null;
+  }
+
+  latestAvailableUpdate = updateInfo;
+  showUpdateNotice(updateInfo, currentVersion);
+  return updateInfo;
+}
+
+function queueUpdateCheck() {
+  if (latestAvailableUpdate) {
+    return updateCheckPromise || Promise.resolve(latestAvailableUpdate);
+  }
+  if (updateCheckPromise) {
+    return updateCheckPromise;
+  }
+
+  updateCheckPromise = checkForUpdates()
+    .catch((error) => {
+      console.log("[OK-Record] update check failed:", error);
+      return null;
+    })
+    .then((result) => {
+      if (!latestAvailableUpdate) {
+        updateCheckPromise = null;
+      }
+      return result;
+    });
+  return updateCheckPromise;
+}
+
+async function openUpdateDownloadPage() {
+  try {
+    const url = getUpdateDownloadPageUrl();
+    const shell = uxp.shell;
+    if (!shell || typeof shell.openExternal !== "function") {
+      throw new Error("UXP shell.openExternal 不可用");
+    }
+
+    const result = await shell.openExternal(url, "打开 OK Record 下载页。");
+    if (result) {
+      throw new Error(result);
+    }
+
+    setRecorderState({ lastError: "" });
+    setStatus(formatRecorderStatus(`已打开下载页：${url}`));
+  } catch (error) {
+    setRecorderState({ lastError: formatError(error) });
+    setStatus(formatRecorderStatus("打开下载页失败"));
+    showExportNotice("打开下载页失败", [formatError(error)], "error");
+    console.log("[OK-Record] open update download page failed:", error);
     throw error;
   }
 }
@@ -1782,13 +2011,18 @@ function getRecordingFinalStateAfterCapture() {
 
 function readIntervalMinutesFromPanel() {
   const currentSeconds = getIntervalTotalSeconds(recorderState.intervalMinutes);
-  const seconds = readBoundedInteger(
-    intervalSecondsInputNode,
-    currentSeconds,
-    MIN_INTERVAL_SECONDS,
-    MAX_INTERVAL_SECONDS,
-    "采样间隔（秒）",
-  );
+  const rawValue = intervalSecondsInputNode ? intervalSecondsInputNode.value : String(currentSeconds);
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) {
+    if (intervalSecondsInputNode) {
+      intervalSecondsInputNode.value = String(currentSeconds);
+    }
+    throw new Error(`采样间隔（秒）必须在 ${MIN_INTERVAL_SECONDS} 到 ${MAX_INTERVAL_SECONDS} 之间`);
+  }
+  const seconds = Math.min(MAX_INTERVAL_SECONDS, Math.max(MIN_INTERVAL_SECONDS, Math.round(value)));
+  if (intervalSecondsInputNode) {
+    intervalSecondsInputNode.value = String(seconds);
+  }
   return seconds / SECONDS_PER_MINUTE;
 }
 
@@ -3156,7 +3390,15 @@ function getPaintingTimerActionLabel() {
 }
 
 
-async function toggleRecording() {
+function isRecordingClearShortcut(event) {
+  return Boolean(event && event.type === "click" && event.ctrlKey && event.shiftKey && event.altKey);
+}
+
+async function toggleRecording(event) {
+  if (isRecordingClearShortcut(event)) {
+    await clearRecordingTimeline();
+    return;
+  }
   if (recordingPauseRequested && isRecorderBusy()) {
     return;
   }
@@ -3315,8 +3557,8 @@ function updateControlState() {
     );
     panelView.renderRecordingStatusLabel(startRecordingButtonNode, getRecordingButtonViewState());
     const recordingActionLabel = paused || recordingPauseRequested ?
-      "继续录制" :
-      (activeRecordingSession ? "暂停录制" : "开始录制");
+      "继续录制；Ctrl+Shift+Alt+点击清空序列帧" :
+      (activeRecordingSession ? "暂停录制；Ctrl+Shift+Alt+点击清空序列帧" : "开始录制；Ctrl+Shift+Alt+点击清空序列帧");
     startRecordingButtonNode.title = recordingActionLabel;
     startRecordingButtonNode.setAttribute("aria-label", recordingActionLabel);
     setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);

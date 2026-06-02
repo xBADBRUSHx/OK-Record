@@ -223,8 +223,8 @@ function createPrimaryActionsGroup({ refs, buttonStates, handlers }) {
     handlers.onToggleRecording,
     "ok-record-record-status-button",
   );
-  refs.startRecordingButtonNode.title = "开始、暂停或继续录制";
-  refs.startRecordingButtonNode.setAttribute("aria-label", "开始、暂停或继续录制");
+  refs.startRecordingButtonNode.title = "开始、暂停或继续录制；Ctrl+Shift+Alt+点击清空序列帧";
+  refs.startRecordingButtonNode.setAttribute("aria-label", "开始、暂停或继续录制；Ctrl+Shift+Alt+点击清空序列帧");
   renderRecordingStatusLabel(refs.startRecordingButtonNode, buttonStates.recording);
 
   refs.captureNowButtonNode = createControlButton(
@@ -385,8 +385,12 @@ function createExportNoticePanel({ refs, handlers }) {
   refs.exportNoticeCloseButtonNode.setAttribute("aria-label", "关闭导出信息");
   refs.exportNoticeCloseButtonNode.title = "关闭";
 
-  refs.exportNoticeBodyNode = document.createElement("div");
+  refs.exportNoticeBodyNode = document.createElement("textarea");
   refs.exportNoticeBodyNode.className = "ok-record-export-notice-body";
+  refs.exportNoticeBodyNode.readOnly = true;
+  refs.exportNoticeBodyNode.rows = 5;
+  refs.exportNoticeBodyNode.spellcheck = false;
+  refs.exportNoticeBodyNode.setAttribute("aria-label", "导出或更新详情，可选中复制");
 
   appendChildren(header, [refs.exportNoticeTitleNode, refs.exportNoticeCloseButtonNode]);
   appendChildren(refs.exportNoticeNode, [header, refs.exportNoticeBodyNode]);
@@ -428,9 +432,11 @@ function showExportNotice(refs, title, lines, tone = "success") {
   }
 
   refs.exportNoticeTitleNode.textContent = title;
-  refs.exportNoticeBodyNode.textContent = Array.isArray(lines) ?
+  const noticeText = Array.isArray(lines) ?
     lines.filter(Boolean).join("\n") :
     String(lines || "");
+  refs.exportNoticeBodyNode.value = noticeText;
+  refs.exportNoticeBodyNode.textContent = noticeText;
   refs.exportNoticeNode.className = [
     "ok-record-export-notice",
     "ok-record-export-notice-visible",
@@ -448,6 +454,7 @@ function hideExportNotice(refs) {
     refs.exportNoticeTitleNode.textContent = "";
   }
   if (refs.exportNoticeBodyNode) {
+    refs.exportNoticeBodyNode.value = "";
     refs.exportNoticeBodyNode.textContent = "";
   }
 }
