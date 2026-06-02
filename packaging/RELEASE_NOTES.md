@@ -1,13 +1,17 @@
 # OK Record Release Notes
 
-## Win OK-Record - 2026-05-30
+## Win OK-Record - 2026-06-02
 
 This Windows test build focuses on Photoshop canvas time-lapse recording, recovery, and MP4 export.
 
 Two package variants are published:
 
-- `OK-Record_20260530.ccx`: lightweight package. Requires FFmpeg on system `PATH`.
-- `OK-Record_20260530_with-ffmpeg.ccx`: no-setup package. Includes FFmpeg under `vendor/ffmpeg/win/x64/`.
+- `OK-Record_20260602.ccx`: lightweight package. Requires FFmpeg on system `PATH`.
+- `OK-Record_20260602_with-ffmpeg.ccx`: no-setup package. Includes FFmpeg under `vendor/ffmpeg/win/x64/`.
+
+## Safety Fix
+
+- Removed the hidden Alt-click clear-frames action from the recording button. The recording button now only starts, pauses, and resumes recording.
 
 ## Recording
 

@@ -555,60 +555,6 @@ async function stopRecording() {
   setStatus(formatRecorderStatus(wasRunning ? "录制已停止" : "录制未运行"));
 }
 
-async function clearRecordingTimeline() {
-  try {
-    if (isRecorderBusy()) {
-      throw new Error(`录制器忙碌：${formatRecorderState(recorderState.state)}`);
-    }
-    if (typeof confirm === "function" &&
-      !confirm("确定要清空当前序列帧吗？这会删除延时录制_Recordings/frames 里的录制帧，但不会删除已导出的视频。")) {
-      return null;
-    }
-
-    recordingLoopActive = false;
-    recordingPauseRequested = false;
-    await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
-
-    const outputDir = await getRecorderOutputDirNativePath();
-    const result = await nativeBridge.clearRecording({ outputDir });
-    setRecorderState({
-      state: RECORDER_STATES.idle,
-      activeSession: null,
-      frameCount: 0,
-      lastCaptureAt: "",
-      lastExportPath: "",
-      lastExportLogPath: "",
-      lastExportProgress: null,
-      lastExportStatus: EXPORT_STATUSES.idle,
-      ...(recorderState.exportSourceDir ? {} : {
-        exportSourceFrameCount: 0,
-        exportSourceLastFramePath: "",
-        exportSourceAspectRatioConsistent: true,
-        exportSourceAspectRatioGroupsJson: "",
-      }),
-      nextCaptureAt: "",
-      documentDirty: false,
-      lastDirtyAt: "",
-      lastChangeEvent: "",
-      lastSkipAt: "",
-      skippedCaptureCount: 0,
-      lastError: "",
-    });
-    updateHoldSecondsInput(recorderState.exportDurationSeconds);
-    updateControlState();
-    hideExportNotice();
-    setStatus(formatRecorderStatus(`已清空序列帧：${result.framesPath || await getRecordingsRootDirNativePath()}`));
-    return result;
-  } catch (error) {
-    setRecorderState({ state: RECORDER_STATES.error, nextCaptureAt: "", lastError: formatError(error) });
-    updateControlState();
-    setStatus(formatRecorderStatus(`清空序列帧失败：${formatError(error)}`));
-    showExportNotice("清空序列帧失败", [formatError(error)], "error");
-    console.log("[OK-Record] clear recording timeline failed:", error);
-    throw error;
-  }
-}
-
 async function startPaintingTimer() {
   try {
     if (paintingTimerState.enabled) {
@@ -3210,12 +3156,7 @@ function getPaintingTimerActionLabel() {
 }
 
 
-async function toggleRecording(event) {
-  const altClick = Boolean(event && event.type === "click" && event.altKey);
-  if (altClick) {
-    await clearRecordingTimeline();
-    return;
-  }
+async function toggleRecording() {
   if (recordingPauseRequested && isRecorderBusy()) {
     return;
   }
@@ -3300,7 +3241,7 @@ function renderPanel() {
       onOpenFrameOutputDir: () => openFrameOutputDir(),
       onChooseStepOutputDir: () => chooseStepOutputDir(),
       onOpenStepOutputDir: () => openStepOutputDir(),
-      onToggleRecording: (event) => toggleRecording(event),
+      onToggleRecording: toggleRecording,
       onCaptureNow: () => captureNow(),
       onPaintingTimerControl: (event) => handlePaintingTimerControl(event),
       onChooseExportSequenceDir: () => chooseExportSequenceDir(),
@@ -3374,8 +3315,8 @@ function updateControlState() {
     );
     panelView.renderRecordingStatusLabel(startRecordingButtonNode, getRecordingButtonViewState());
     const recordingActionLabel = paused || recordingPauseRequested ?
-      "继续录制；Alt+点击清空序列帧" :
-      (activeRecordingSession ? "暂停录制；Alt+点击清空序列帧" : "开始录制；Alt+点击清空序列帧");
+      "继续录制" :
+      (activeRecordingSession ? "暂停录制" : "开始录制");
     startRecordingButtonNode.title = recordingActionLabel;
     startRecordingButtonNode.setAttribute("aria-label", recordingActionLabel);
     setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);

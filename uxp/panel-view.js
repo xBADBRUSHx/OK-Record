@@ -223,8 +223,8 @@ function createPrimaryActionsGroup({ refs, buttonStates, handlers }) {
     handlers.onToggleRecording,
     "ok-record-record-status-button",
   );
-  refs.startRecordingButtonNode.title = "开始、暂停或继续录制；Alt+点击清空序列帧";
-  refs.startRecordingButtonNode.setAttribute("aria-label", "开始、暂停或继续录制；Alt+点击清空序列帧");
+  refs.startRecordingButtonNode.title = "开始、暂停或继续录制";
+  refs.startRecordingButtonNode.setAttribute("aria-label", "开始、暂停或继续录制");
   renderRecordingStatusLabel(refs.startRecordingButtonNode, buttonStates.recording);
 
   refs.captureNowButtonNode = createControlButton(

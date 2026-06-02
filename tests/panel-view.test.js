@@ -122,6 +122,7 @@ function assertPrimaryActionsGroup(group, refs) {
   assert(hasClass(body.children[4], "ok-record-step-row"), "manual sampling button must sit under recording");
   assertPaintingTimerControls(refs);
   assert.strictEqual(textOf(refs.startRecordingButtonNode), "录制中 3 张", "recording button must render status text through panel-view");
+  assert.strictEqual(refs.startRecordingButtonNode.getAttribute("aria-label"), "开始、暂停或继续录制", "recording button must not expose destructive Alt-click affordances");
   assert(hasClass(refs.startRecordingButtonNode.querySelector(".ok-record-record-indicator-slot"), "ok-record-record-indicator-slot"), "recording status must reserve an indicator slot while active");
   assert.strictEqual(textOf(refs.captureNowButtonNode), "手动采样 2 张", "manual sampling button must show the sampled count");
   assert(!hasClass(refs.captureNowButtonNode.querySelector(".ok-record-step-indicator"), "ok-record-step-indicator-hidden"), "manual sampling indicator must be visible after sampling");

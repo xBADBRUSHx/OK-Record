@@ -514,7 +514,7 @@ assert(localDocumentation.includes("截图待放"), "local documentation must ke
 assert(localDocumentation.includes("images/02-install-ccx.jpg"), "local documentation must expose the Creative Cloud install screenshot");
 assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local documentation must expose the Creative Cloud installed-state screenshot");
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
-assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-05-30"'), "local documentation must link to the GitHub Release download page");
+assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/win-ok-record-2026-06-02"'), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
 assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");
 assert(localDocumentation.includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "local documentation must translate the Photoshop version requirement");
@@ -664,8 +664,9 @@ assert(buildReleaseWindowsScript.includes("OK-Record-User-Guide.html"), "Windows
 assert(buildReleaseWindowsScript.includes('.Replace("images/", "docs/images/")'), "Windows package root-level user guide must resolve packaged image paths");
 assert(!uxpMain.includes("ok-record-timer-time"), "UXP painting timer must not keep the split time node");
 assert(uxpMain.includes("setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);"), "UXP recording button must remain enabled while active so busy capture states do not gray out the stop control");
-assert(uxpMain.includes("Alt+点击清空序列帧"), "UXP recording button must expose the Alt-click clear-frames affordance");
-assert(uxpMain.includes("nativeBridge.clearRecording"), "UXP clear-frames action must route through the native bridge");
+assert(!uxpMain.includes("Alt+点击清空序列帧"), "UXP recording button must not expose a destructive Alt-click clear-frames affordance");
+assert(!uxpMain.includes("clearRecordingTimeline"), "UXP panel must not keep a hidden clear-recording handler");
+assert(!uxpMain.includes("nativeBridge.clearRecording"), "UXP panel must not expose clear frames through the recording button path");
 assert(uxpMain.includes('require("./status-messages")'), "UXP user-facing status text must route through the status messages module");
 assert(uxpMain.includes("buildExportSuccessMessages"), "UXP export success must use the status message mapper");
 assert(uxpMain.includes("buildExportFailureMessages"), "UXP export failure must use the status message mapper");
@@ -677,11 +678,10 @@ assert(!uxpMain.includes("resumeRecordingButtonNode"), "UXP panel must not keep 
 assert(!uxpMain.includes("stopRecordingButtonNode"), "UXP panel must not keep the retired separate stop button node");
 assert(!uxpMain.includes("pauseRecordingButtonNode"), "UXP panel must not keep a separate pause button node");
 assert(!uxpMain.includes("toggleRecordingPause"), "UXP panel must not keep a separate pause/resume UI toggle");
-assert(uxpMain.includes("toggleRecording"), "UXP panel must use one recording button for start, pause, resume, and Alt-click clear");
-assert(uxpMain.includes('event && event.type === "click" && event.altKey'), "UXP recording button must reserve Alt-click for clearing sequence frames");
+assert(uxpMain.includes("toggleRecording"), "UXP panel must use one recording button for start, pause, and resume");
 assert(uxpMain.includes("await pauseRecording();"), "UXP recording button ordinary click must pause while recording");
 assert(uxpMain.includes("await resumeRecording();"), "UXP recording button ordinary click must resume while paused");
-assert(uxpMain.includes("await clearRecordingTimeline();"), "UXP recording button Alt-click must clear recording frames");
+assert(!uxpMain.includes("await clearRecordingTimeline();"), "UXP recording button must not clear recording frames through Alt-click");
 assert(uxpMain.includes("getRecordingFrameCountText"), "UXP recording button must show the sampled frame count in active and paused states");
 assert(uxpMain.includes("recordingPauseRequested"), "UXP recording button must handle pause requests during capture/write without becoming a stop button");
 assert(uxpMain.includes("async function stopRecordingRuntimeSchedulers"), "UXP recorder failures must share runtime scheduler cleanup");
