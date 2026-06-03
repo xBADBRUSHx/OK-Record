@@ -566,7 +566,7 @@ async function run() {
   assert.strictEqual(openExternalCalls.length, 1, "download-page flyout menu must open one external URL");
   assert.strictEqual(
     openExternalCalls[0].url,
-    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0",
+    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
     "download-page flyout menu must open the current public release before a newer manifest is fetched",
   );
 

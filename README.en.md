@@ -10,7 +10,7 @@ It does not continuously record your screen. Instead, it saves snapshots of the 
 
 Download the `.ccx` installer from GitHub Releases:
 
-[Win OK-Record v1.0](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0)
+[Win OK-Record v1.0.1](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1)
 
 User guide with screenshots: [OK Record User Guide](https://xbadbrushx.github.io/OK-Record/)
 

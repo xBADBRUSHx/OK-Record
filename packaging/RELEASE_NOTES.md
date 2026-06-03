@@ -1,5 +1,17 @@
 # OK Record Release Notes
 
+## OK Record v1.0.1 - 2026-06-03
+
+### 中文
+
+- 修复部分 Photoshop 2026 环境中，RGB 颜色 / 8 位文档被 UXP 返回为 3 通道 RGB 像素后无法录制的问题。
+- OK Record 现在同时支持 8 位 RGB 和 8 位 RGBA 像素缓冲区；用户不需要为了这个问题调整文档设置。
+
+### English
+
+- Fixed recording failures in some Photoshop 2026 environments where RGB Color / 8-bit documents are returned by UXP as 3-channel RGB pixels.
+- OK Record now accepts both 8-bit RGB and 8-bit RGBA pixel buffers; users do not need to change document settings for this issue.
+
 ## OK Record v1.0 - 2026-06-02
 
 ### 中文

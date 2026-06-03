@@ -72,6 +72,16 @@ assert(ffmpegError.includes("with-ffmpeg 免配置版"), "missing-FFmpeg error m
 assert(ffmpegError.includes("winget install --id Gyan.FFmpeg.Essentials -e --source winget"), "missing-FFmpeg error must include the Windows install command");
 assert(ffmpegError.includes("安装后请重启 Photoshop"), "missing-FFmpeg error must tell users to restart Photoshop");
 
+const pixelModeError = statusMessages.formatError(new Error("JPEG frame storage currently requires 8-bit RGBA source pixels"));
+assert(pixelModeError.includes("8 位 RGB"), "pixel-mode error must explain the required Photoshop document mode");
+assert(pixelModeError.includes("图像 > 模式"), "pixel-mode error must point users to the Photoshop mode menu");
+assert(pixelModeError.includes("RGB 颜色、8 位/通道"), "pixel-mode error must name the required Photoshop settings");
+assert(pixelModeError.includes("复制或另存"), "pixel-mode error must warn users before converting high-bit-depth documents");
+assert(!pixelModeError.includes("JPEG frame storage currently requires"), "pixel-mode error must hide the native encoder wording");
+const rgbOrRgbaPixelModeError = statusMessages.formatError(new Error("PNG frame storage currently requires 8-bit RGB or RGBA source pixels"));
+assert(rgbOrRgbaPixelModeError.includes("RGB 颜色、8 位/通道"), "updated pixel-mode errors must still point to Photoshop mode settings");
+assert(!rgbOrRgbaPixelModeError.includes("RGB or RGBA source pixels"), "updated pixel-mode errors must hide native source-pixel wording");
+
 assert.strictEqual(
   statusMessages.formatExportProgress({
     parsed: true,

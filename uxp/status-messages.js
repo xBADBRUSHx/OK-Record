@@ -170,6 +170,20 @@ function formatError(error) {
       "安装后请重启 Photoshop。",
     ].join("\n");
   }
+  if (
+    message.includes("JPEG frame storage currently requires 8-bit RGBA source pixels") ||
+    message.includes("JPEG frame storage currently requires 8-bit RGB or RGBA source pixels") ||
+    message.includes("PNG frame storage currently requires 8-bit RGBA source pixels") ||
+    message.includes("PNG frame storage currently requires 8-bit RGB or RGBA source pixels") ||
+    message.includes("Current export only supports frames captured from 8-bit RGBA source pixels") ||
+    message.includes("Current export only supports frames captured from 8-bit RGB or RGBA source pixels")
+  ) {
+    return [
+      "当前文档不是 OK Record 可录制的 8 位 RGB 像素格式。",
+      "请在 Photoshop 菜单 图像 > 模式 中确认：RGB 颜色、8 位/通道。",
+      "如果正在处理 16/32 位或 CMYK/Lab/灰度文档，建议先复制或另存后再转换，避免影响原文件。",
+    ].join("\n");
+  }
   return message;
 }
 

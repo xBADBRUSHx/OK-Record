@@ -1,8 +1,8 @@
 {
   "schema": "ok-record.update-manifest.v1",
-  "version": "1.0.0",
-  "releaseDate": "2026-06-02",
-  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0",
-  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0/OK-Record_with-ffmpeg.ccx",
-  "summary": "v1.0 增加更新提醒，恢复 Ctrl+Shift+Alt 清空序列帧确认，并修正采样间隔 0 秒误输入。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
+  "version": "1.0.1",
+  "releaseDate": "2026-06-03",
+  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
+  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.1/OK-Record_with-ffmpeg.ccx",
+  "summary": "v1.0.1 修复部分 Photoshop 2026 环境中 RGB 8 位文档无法录制的问题。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
 }

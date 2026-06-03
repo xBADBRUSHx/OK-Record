@@ -100,6 +100,19 @@ struct ImageDimensions {
 
 ImageDimensions ReadEncodedImageDimensions(const fs::path& imagePath);
 
+bool IsEightBitRgbSource(const std::string& pixelFormat, uint32_t components, uint32_t componentSize) {
+    return componentSize == 8 &&
+        ((pixelFormat == "RGB" && components == 3) || (pixelFormat == "RGBA" && components == 4));
+}
+
+bool IsEightBitRgbSource(const FrameMetadata& metadata) {
+    return IsEightBitRgbSource(metadata.pixelFormat, metadata.components, metadata.componentSize);
+}
+
+bool IsEightBitRgbSource(const FrameWriteRequest& request) {
+    return IsEightBitRgbSource(request.pixelFormat, request.components, request.componentSize);
+}
+
 fs::path GetRecordingsRootPath(const std::string& outputDir) {
     return PathFromUtf8(outputDir) / PathFromUtf8(RECORDINGS_ROOT_DIR_NAME);
 }
@@ -764,8 +777,8 @@ ExportFrameSet BuildExportFrameSet(const ExportRequest& request) {
     }
 
     FrameMetadata firstMetadata = ReadFrameMetadata(frames.front().metadataJson);
-    if (firstMetadata.pixelFormat != "RGBA" || firstMetadata.components != 4 || firstMetadata.componentSize != 8) {
-        throw std::runtime_error("Current export only supports frames captured from 8-bit RGBA source pixels");
+    if (!IsEightBitRgbSource(firstMetadata)) {
+        throw std::runtime_error("Current export only supports frames captured from 8-bit RGB or RGBA source pixels");
     }
     const FrameStorageSpec storageSpec = GetFrameStorageSpecFromMetadata(firstMetadata);
 
@@ -1258,54 +1271,64 @@ uint8_t FlattenChannelOnWhite(uint8_t channel, uint8_t alpha) {
     return static_cast<uint8_t>((static_cast<uint32_t>(channel) * alpha + 255u * (255u - alpha) + 127u) / 255u);
 }
 
-std::vector<uint8_t> FlattenRgbaToBgrOnWhite(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
-    if (request.pixelFormat != "RGBA" || request.components != 4 || request.componentSize != 8) {
-        throw std::runtime_error("JPEG frame storage currently requires 8-bit RGBA source pixels");
+size_t GetExpectedRgbSourceByteLength(uint64_t pixelCount, uint32_t components, const std::string& storageFormat) {
+    if (pixelCount > std::numeric_limits<size_t>::max() / components) {
+        throw std::runtime_error("Frame is too large to encode as " + storageFormat);
+    }
+    return static_cast<size_t>(pixelCount) * components;
+}
+
+std::vector<uint8_t> ConvertRgbSourceToBgrOnWhite(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
+    if (!IsEightBitRgbSource(request)) {
+        throw std::runtime_error("JPEG frame storage currently requires 8-bit RGB or RGBA source pixels");
     }
 
     const uint64_t pixelCount = static_cast<uint64_t>(request.width) * request.height;
     if (pixelCount > std::numeric_limits<size_t>::max() / 3) {
         throw std::runtime_error("Frame is too large to encode as JPEG");
     }
-    if (byteLength != pixelCount * 4) {
-        throw std::runtime_error("RGBA buffer size does not match JPEG encoder input dimensions");
+    const size_t expectedByteLength = GetExpectedRgbSourceByteLength(pixelCount, request.components, "JPEG");
+    if (byteLength != expectedByteLength) {
+        throw std::runtime_error("RGB source buffer size does not match JPEG encoder input dimensions");
     }
 
-    const uint8_t* rgba = static_cast<const uint8_t*>(frameData);
+    const uint8_t* sourcePixels = static_cast<const uint8_t*>(frameData);
     std::vector<uint8_t> bgr(static_cast<size_t>(pixelCount) * 3);
     for (uint64_t pixel = 0; pixel < pixelCount; ++pixel) {
-        const size_t source = static_cast<size_t>(pixel * 4);
+        const size_t source = static_cast<size_t>(pixel) * request.components;
         const size_t target = static_cast<size_t>(pixel * 3);
-        const uint8_t alpha = rgba[source + 3];
-        bgr[target] = FlattenChannelOnWhite(rgba[source + 2], alpha);
-        bgr[target + 1] = FlattenChannelOnWhite(rgba[source + 1], alpha);
-        bgr[target + 2] = FlattenChannelOnWhite(rgba[source], alpha);
+        const uint8_t alpha = request.components == 4 ? sourcePixels[source + 3] : 255;
+        bgr[target] = FlattenChannelOnWhite(sourcePixels[source + 2], alpha);
+        bgr[target + 1] = FlattenChannelOnWhite(sourcePixels[source + 1], alpha);
+        bgr[target + 2] = FlattenChannelOnWhite(sourcePixels[source], alpha);
     }
     return bgr;
 }
 
-std::vector<uint8_t> FlattenRgbaOnWhite(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
-    if (request.pixelFormat != "RGBA" || request.components != 4 || request.componentSize != 8) {
-        throw std::runtime_error("JPEG frame storage currently requires 8-bit RGBA source pixels");
+std::vector<uint8_t> ConvertRgbSourceToRgbaOnWhite(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
+    if (!IsEightBitRgbSource(request)) {
+        throw std::runtime_error("JPEG frame storage currently requires 8-bit RGB or RGBA source pixels");
     }
 
     const uint64_t pixelCount = static_cast<uint64_t>(request.width) * request.height;
     if (pixelCount > std::numeric_limits<size_t>::max() / 4) {
         throw std::runtime_error("Frame is too large to encode as JPEG");
     }
-    if (byteLength != pixelCount * 4) {
-        throw std::runtime_error("RGBA buffer size does not match JPEG encoder input dimensions");
+    const size_t expectedByteLength = GetExpectedRgbSourceByteLength(pixelCount, request.components, "JPEG");
+    if (byteLength != expectedByteLength) {
+        throw std::runtime_error("RGB source buffer size does not match JPEG encoder input dimensions");
     }
 
-    const uint8_t* rgba = static_cast<const uint8_t*>(frameData);
+    const uint8_t* sourcePixels = static_cast<const uint8_t*>(frameData);
     std::vector<uint8_t> flattened(static_cast<size_t>(pixelCount) * 4);
     for (uint64_t pixel = 0; pixel < pixelCount; ++pixel) {
-        const size_t offset = static_cast<size_t>(pixel * 4);
-        const uint8_t alpha = rgba[offset + 3];
-        flattened[offset] = FlattenChannelOnWhite(rgba[offset], alpha);
-        flattened[offset + 1] = FlattenChannelOnWhite(rgba[offset + 1], alpha);
-        flattened[offset + 2] = FlattenChannelOnWhite(rgba[offset + 2], alpha);
-        flattened[offset + 3] = 255;
+        const size_t source = static_cast<size_t>(pixel) * request.components;
+        const size_t target = static_cast<size_t>(pixel * 4);
+        const uint8_t alpha = request.components == 4 ? sourcePixels[source + 3] : 255;
+        flattened[target] = FlattenChannelOnWhite(sourcePixels[source], alpha);
+        flattened[target + 1] = FlattenChannelOnWhite(sourcePixels[source + 1], alpha);
+        flattened[target + 2] = FlattenChannelOnWhite(sourcePixels[source + 2], alpha);
+        flattened[target + 3] = 255;
     }
     return flattened;
 }
@@ -1325,7 +1348,7 @@ uint64_t WriteJpegFrameAtomically(
 
 #ifdef _WIN32
     try {
-        std::vector<uint8_t> bgr = FlattenRgbaToBgrOnWhite(frameData, byteLength, request);
+        std::vector<uint8_t> bgr = ConvertRgbSourceToBgrOnWhite(frameData, byteLength, request);
         if (request.width > std::numeric_limits<UINT>::max() ||
             request.height > std::numeric_limits<UINT>::max() ||
             static_cast<uint64_t>(request.width) * 3 > std::numeric_limits<UINT>::max() ||
@@ -1391,7 +1414,7 @@ uint64_t WriteJpegFrameAtomically(
     }
 #elif defined(__APPLE__)
     try {
-        std::vector<uint8_t> rgba = FlattenRgbaOnWhite(frameData, byteLength, request);
+        std::vector<uint8_t> rgba = ConvertRgbSourceToRgbaOnWhite(frameData, byteLength, request);
         if (request.width == 0 || request.height == 0) {
             throw std::runtime_error("JPEG frame dimensions are empty");
         }
@@ -1453,29 +1476,58 @@ uint64_t WriteJpegFrameAtomically(
 #endif
 }
 
-std::vector<uint8_t> ConvertRgbaToBgra(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
-    if (request.pixelFormat != "RGBA" || request.components != 4 || request.componentSize != 8) {
-        throw std::runtime_error("PNG frame storage currently requires 8-bit RGBA source pixels");
+std::vector<uint8_t> ConvertRgbSourceToBgra(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
+    if (!IsEightBitRgbSource(request)) {
+        throw std::runtime_error("PNG frame storage currently requires 8-bit RGB or RGBA source pixels");
     }
 
     const uint64_t pixelCount = static_cast<uint64_t>(request.width) * request.height;
     if (pixelCount > std::numeric_limits<size_t>::max() / 4) {
         throw std::runtime_error("Frame is too large to encode as PNG");
     }
-    if (byteLength != pixelCount * 4) {
-        throw std::runtime_error("RGBA buffer size does not match PNG encoder input dimensions");
+    const size_t expectedByteLength = GetExpectedRgbSourceByteLength(pixelCount, request.components, "PNG");
+    if (byteLength != expectedByteLength) {
+        throw std::runtime_error("RGB source buffer size does not match PNG encoder input dimensions");
     }
 
-    const uint8_t* rgba = static_cast<const uint8_t*>(frameData);
+    const uint8_t* sourcePixels = static_cast<const uint8_t*>(frameData);
     std::vector<uint8_t> bgra(static_cast<size_t>(pixelCount) * 4);
     for (uint64_t pixel = 0; pixel < pixelCount; ++pixel) {
-        const size_t offset = static_cast<size_t>(pixel * 4);
-        bgra[offset] = rgba[offset + 2];
-        bgra[offset + 1] = rgba[offset + 1];
-        bgra[offset + 2] = rgba[offset];
-        bgra[offset + 3] = rgba[offset + 3];
+        const size_t source = static_cast<size_t>(pixel) * request.components;
+        const size_t target = static_cast<size_t>(pixel * 4);
+        bgra[target] = sourcePixels[source + 2];
+        bgra[target + 1] = sourcePixels[source + 1];
+        bgra[target + 2] = sourcePixels[source];
+        bgra[target + 3] = request.components == 4 ? sourcePixels[source + 3] : 255;
     }
     return bgra;
+}
+
+std::vector<uint8_t> ConvertRgbSourceToRgba(const void* frameData, size_t byteLength, const FrameWriteRequest& request) {
+    if (!IsEightBitRgbSource(request)) {
+        throw std::runtime_error("PNG frame storage currently requires 8-bit RGB or RGBA source pixels");
+    }
+
+    const uint64_t pixelCount = static_cast<uint64_t>(request.width) * request.height;
+    if (pixelCount > std::numeric_limits<size_t>::max() / 4) {
+        throw std::runtime_error("Frame is too large to encode as PNG");
+    }
+    const size_t expectedByteLength = GetExpectedRgbSourceByteLength(pixelCount, request.components, "PNG");
+    if (byteLength != expectedByteLength) {
+        throw std::runtime_error("RGB source buffer size does not match PNG encoder input dimensions");
+    }
+
+    const uint8_t* sourcePixels = static_cast<const uint8_t*>(frameData);
+    std::vector<uint8_t> rgba(static_cast<size_t>(pixelCount) * 4);
+    for (uint64_t pixel = 0; pixel < pixelCount; ++pixel) {
+        const size_t source = static_cast<size_t>(pixel) * request.components;
+        const size_t target = static_cast<size_t>(pixel * 4);
+        rgba[target] = sourcePixels[source];
+        rgba[target + 1] = sourcePixels[source + 1];
+        rgba[target + 2] = sourcePixels[source + 2];
+        rgba[target + 3] = request.components == 4 ? sourcePixels[source + 3] : 255;
+    }
+    return rgba;
 }
 
 uint64_t WritePngFrameAtomically(
@@ -1493,7 +1545,7 @@ uint64_t WritePngFrameAtomically(
 
 #ifdef _WIN32
     try {
-        std::vector<uint8_t> bgra = ConvertRgbaToBgra(frameData, byteLength, request);
+        std::vector<uint8_t> bgra = ConvertRgbSourceToBgra(frameData, byteLength, request);
         if (request.width > std::numeric_limits<UINT>::max() ||
             request.height > std::numeric_limits<UINT>::max() ||
             static_cast<uint64_t>(request.width) * 4 > std::numeric_limits<UINT>::max() ||
@@ -1550,20 +1602,11 @@ uint64_t WritePngFrameAtomically(
     }
 #elif defined(__APPLE__)
     try {
-        if (request.pixelFormat != "RGBA" || request.components != 4 || request.componentSize != 8) {
-            throw std::runtime_error("PNG frame storage currently requires 8-bit RGBA source pixels");
-        }
-        const uint64_t pixelCount = static_cast<uint64_t>(request.width) * request.height;
-        if (pixelCount > std::numeric_limits<size_t>::max() / 4) {
-            throw std::runtime_error("Frame is too large to encode as PNG");
-        }
-        if (byteLength != pixelCount * 4) {
-            throw std::runtime_error("RGBA buffer size does not match PNG encoder input dimensions");
-        }
+        std::vector<uint8_t> rgba = ConvertRgbSourceToRgba(frameData, byteLength, request);
 
         CfPtr<CGColorSpaceRef> colorSpace(CGColorSpaceCreateDeviceRGB());
         ThrowIfFalse(static_cast<bool>(colorSpace), "Unable to create PNG color space");
-        CfPtr<CGDataProviderRef> provider(CGDataProviderCreateWithData(nullptr, frameData, byteLength, nullptr));
+        CfPtr<CGDataProviderRef> provider(CGDataProviderCreateWithData(nullptr, rgba.data(), rgba.size(), nullptr));
         ThrowIfFalse(static_cast<bool>(provider), "Unable to create PNG data provider");
 
         const size_t bytesPerRow = static_cast<size_t>(request.width) * 4;
