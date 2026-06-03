@@ -410,7 +410,7 @@
       </div>
 
       <h2 id="download">1. 下载哪个版本</h2>
-      <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1" target="_blank" rel="noopener">Win OK-Record v1.0.1</a></p>
+      <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2" target="_blank" rel="noopener">Win OK-Record v1.0.2</a></p>
       <p><strong>★ 仅支持 Photoshop 2023 24.2.0 或更高版本。</strong></p>
       <p>Release 页面里有两个 <code>.ccx</code> 安装文件：</p>
       <ul>
@@ -451,9 +451,10 @@
       <p>如果你的加载工具没有刷新，请先关闭 Photoshop，重新加载解压后的插件目录，再打开 Photoshop。</p>
 
       <h2 id="before">3. 录制前建议</h2>
-      <p>开始录制前，建议先在面板中手动设置保存目录，这样后续更容易找到录制文件。</p>
-      <p>如果没有手动设置保存目录，OK Record 会自动存放到 Photoshop 文档的保存路径附近。</p>
-      <p>如果 Photoshop 文档也还没有保存，录制文件会放到 OK Record 的默认路径。</p>
+      <p>开始录制前，先把 Photoshop 文档保存为本地 PSD/PSB 文件。保存过的 PSD/PSB 即使当前画布还有未保存修改，也可以继续录制。</p>
+      <p>如果文档从未保存到本地目录，点击开始录制会提示先保存，不会写入序列帧。</p>
+      <p>可以在保存文档后手动指定 OK-Record 保存目录。没有手动指定时，OK Record 会自动存放到 Photoshop 文档的保存路径附近；手动指定只对当前 PSD/PSB 生效。需要让增量 PSD/PSB 续写旧项目时，请在那个文件里再次指定同一个 OK-Record 保存目录。</p>
+      <p>录制失败、手动采样失败、导出完成或导出失败时，插件会弹出提醒窗口。关闭弹窗后，面板底部仍会保留详情信息，方便选中并复制给开发者排查。</p>
 
       <h2 id="timer">4. 绘画计时</h2>
       <p>面板最上方的绘画计时用于单独统计实际绘画时间。它只记录你画画的时间，不会影响序列帧录制和视频导出。</p>
@@ -514,7 +515,8 @@
         <figcaption>OK Record 面板缩到最小时显示三个主要功能。</figcaption>
       </figure>
       <h3>自动录制</h3>
-      <p>点击开始录制后，OK Record 会按采样间隔自动保存序列帧。录制中再次点击按钮可暂停；暂停后再次点击可继续。需要清空序列帧时，按住 <code>Ctrl+Shift+Alt</code> 点击录制按钮，并在弹窗中确认。</p>
+      <p>点击开始录制后，OK Record 会按采样间隔自动保存序列帧。录制中再次点击按钮可暂停；暂停后再次点击可继续。需要清空序列帧时，点击红色 <code>清空序列帧</code> 按钮，并在弹窗中确认。</p>
+      <p>暂停录制后可以点击 <code>指定 OK-Record 保存目录</code>。选择新目录会结束当前暂停录制状态，面板回到开始录制，并按新目录恢复或扫描时间线。</p>
 
       <h3>手动采样</h3>
       <p>手动采样会立即保存当前画面，适合记录草图完成、大色块完成、细化前、完稿前等重要阶段。它保存的是单张阶段图，不影响正常延时录制。</p>
@@ -545,7 +547,7 @@
               <td><img class="timer-state-image" src="images/05-录制-暂停录制.jpg" alt="录制暂停状态"></td>
               <td><span class="timer-state-name">暂停录制</span></td>
               <td>暂停后不会继续自动保存新的序列帧。</td>
-              <td>再次点击可继续录制；需要清空序列帧时，按住 <code>Ctrl+Shift+Alt</code> 点击录制按钮并确认。</td>
+              <td>再次点击可继续录制；也可以导出当前时间线。需要切换 OK-Record 保存目录时，选择新目录会结束当前暂停录制状态。</td>
             </tr>
             <tr>
               <td><img class="timer-state-image" src="images/06-手动采样-未采样.jpg" alt="手动采样未采样状态"></td>
@@ -564,22 +566,16 @@
       </div>
 
       <h3>保存和打开目录</h3>
-      <p>序列帧保存目录用来设置项目保存目录。手动选择后，OK Record 会直接在你选的目录下创建 <code>步骤图_Steps</code> 和 <code>延时录制_Recordings</code>。</p>
-      <p>如果没有手动选择目录，且 Photoshop 文档已经保存，OK Record 会在 PSD 同级目录创建 <code>PSD文件名-OK-Record</code> 文件夹。</p>
+      <p><code>指定 OK-Record 保存目录</code> 用来设置当前录制项目目录。手动选择后，OK Record 会直接在你选的目录下创建 <code>步骤图_Steps</code> 和 <code>延时录制_Recordings</code>。这个选择只绑定当前 PSD/PSB；如果要让增量 PSD/PSB 续录到同一个项目，需要在那个文件里再次选择同一个项目目录。</p>
+      <p>正在录制或正在写入时不能切换保存目录。暂停录制时可以切换目录；切换后当前暂停录制会结束，之后会按新目录恢复或重新开始。</p>
+      <p>如果没有手动选择目录，且 Photoshop 文档已经保存，OK Record 会在 PSD 同级目录创建 <code>OK-Record_PSD文件名</code> 文件夹。新保存的其他 PSD/PSB 默认使用自己的项目文件夹。需要回到默认目录时，重新选择这个默认项目文件夹即可。</p>
       <p>打开序列帧目录和打开步骤图目录可以快速进入对应文件夹。</p>
       <figure class="screenshot">
         <div class="screenshot-frame">
-          <img src="images/08_序列帧保存目录.jpg" alt="序列帧保存目录按钮位置" loading="lazy" onload="this.closest('.screenshot').classList.add('is-loaded')" onerror="this.remove()">
-          <span class="screenshot-placeholder">截图待放：序列帧保存目录的位置。<br><code>images/08_序列帧保存目录.jpg</code></span>
+          <img src="images/08_序列帧保存目录.jpg" alt="OK-Record 保存目录按钮位置" loading="lazy" onload="this.closest('.screenshot').classList.add('is-loaded')" onerror="this.remove()">
+          <span class="screenshot-placeholder">截图待放：OK-Record 保存目录的位置。<br><code>images/08_序列帧保存目录.jpg</code></span>
         </div>
-        <figcaption>序列帧保存目录的位置。</figcaption>
-      </figure>
-      <figure class="screenshot">
-        <div class="screenshot-frame">
-          <img src="images/08_步骤图保存目录.jpg" alt="步骤图保存目录按钮位置" loading="lazy" onload="this.closest('.screenshot').classList.add('is-loaded')" onerror="this.remove()">
-          <span class="screenshot-placeholder">截图待放：步骤图保存目录的位置。<br><code>images/08_步骤图保存目录.jpg</code></span>
-        </div>
-        <figcaption>步骤图保存目录的位置。</figcaption>
+        <figcaption>OK-Record 保存目录的位置。</figcaption>
       </figure>
 
       <h3>采样参数</h3>
@@ -592,6 +588,7 @@
       <h2 id="export">6. 导出设置</h2>
       <p>导出设置用于把序列帧合成为 MP4 视频。</p>
       <p>录制中请先暂停再导出。暂停后可以直接导出，也可以继续录制，新的序列帧会接在原来的尾号后面。</p>
+      <p>导出完成或导出失败都会弹出提醒窗口。导出路径、日志路径和错误详情也会保留在面板底部，可以选中复制。</p>
       <ul>
         <li>导出视频：使用当前或已选择的序列帧目录导出 MP4。</li>
         <li>选择序列帧目录：导出以前录制过的内容时使用。</li>
@@ -613,7 +610,7 @@
 
       <h2 id="files">7. 文件保存在哪里</h2>
       <p>如果 Photoshop 文档已经保存，默认会保存在 PSD 同级目录的项目文件夹里。</p>
-      <pre><code>PSD文件名-OK-Record/
+      <pre><code>OK-Record_PSD文件名/
   步骤图_Steps/
   延时录制_Recordings/
     frames/
@@ -628,7 +625,7 @@
         <li><code>temp</code>：临时文件。</li>
         <li><code>manifest.json</code>：录制信息文件。</li>
       </ul>
-      <p>如果你手动选择了保存目录，插件会直接在你选择的目录下创建同样的两个文件夹。</p>
+      <p>如果你手动选择了 OK-Record 保存目录，插件会直接在你选择的项目目录下创建同样的两个文件夹。这个选择只绑定当前 PSD/PSB；新保存的其他 PSD/PSB 默认使用自己的项目文件夹。重新选择当前 PSD 的默认项目目录即可回到自动目录。</p>
       <figure class="screenshot">
         <div class="screenshot-frame">
           <img src="images/07-文件夹路径.jpg" alt="录制文件夹和步骤图文件夹路径" loading="lazy" onload="this.closest('.screenshot').classList.add('is-loaded')" onerror="this.remove()">
@@ -656,7 +653,7 @@
       <p>同一比例的画布尺寸变化会在导出时统一缩放。 如果检测到不同比例的序列帧，OK Record 会让你选择自动补边合并、忽略少数比例帧，或手动清理后再导出。</p>
 
       <h3>Photoshop 或电脑中途崩溃怎么办</h3>
-      <p>已经写入磁盘的序列帧通常还在。重新打开 Photoshop 后，继续使用同一个 PSD 或手动选择之前的保存目录，再尝试导出视频。</p>
+      <p>已经写入磁盘的序列帧通常还在。重新打开 Photoshop 后，继续使用同一个 PSD，或手动选择之前的 OK-Record 保存目录，再尝试导出视频。</p>
 
       <h2 id="contact">10. 联系作者</h2>
       <p>如果使用过程中遇到问题，可以通过下面方式联系作者：</p>
@@ -713,9 +710,10 @@
         "截图待放：Photoshop 中打开 OK Record 插件面板。": "Screenshot placeholder: OK Record plugin panel opened in Photoshop.",
         "如果你的加载工具没有刷新，请先关闭 Photoshop，重新加载解压后的插件目录，再打开 Photoshop。": "If your loading tool does not refresh, close Photoshop first, reload the extracted plugin directory, then open Photoshop again.",
         "。": ".",
-        "开始录制前，建议先在面板中手动设置保存目录，这样后续更容易找到录制文件。": "Before recording, set the save folder manually in the panel first so recording files are easier to find later.",
-        "如果没有手动设置保存目录，OK Record 会自动存放到 Photoshop 文档的保存路径附近。": "If you do not set a save folder manually, OK Record automatically saves near the saved Photoshop document.",
-        "如果 Photoshop 文档也还没有保存，录制文件会放到 OK Record 的默认路径。": "If the Photoshop document has not been saved either, recording files are saved in OK Record's default folder.",
+        "开始录制前，先把 Photoshop 文档保存为本地 PSD/PSB 文件。保存过的 PSD/PSB 即使当前画布还有未保存修改，也可以继续录制。": "Before recording, save the Photoshop document as a local PSD/PSB file. A saved PSD/PSB can keep recording even when the current canvas has unsaved edits.",
+        "如果文档从未保存到本地目录，点击开始录制会提示先保存，不会写入序列帧。": "If the document has never been saved to a local folder, clicking Start Recording shows a save-first warning and does not write sequence frames.",
+        "可以在保存文档后手动指定 OK-Record 保存目录。没有手动指定时，OK Record 会自动存放到 Photoshop 文档的保存路径附近；手动指定只对当前 PSD/PSB 生效。需要让增量 PSD/PSB 续写旧项目时，请在那个文件里再次指定同一个 OK-Record 保存目录。": "After saving the document, you can manually choose the OK-Record save folder. If you do not choose one manually, OK Record saves near the saved Photoshop document; a manual choice applies only to the current PSD/PSB. To continue an incremental PSD/PSB in an older project, choose the same OK-Record save folder again in that file.",
+        "录制失败、手动采样失败、导出完成或导出失败时，插件会弹出提醒窗口。关闭弹窗后，面板底部仍会保留详情信息，方便选中并复制给开发者排查。": "When recording fails, manual capture fails, export completes, or export fails, the plugin shows an alert dialog. After closing the dialog, the panel keeps the details at the bottom so you can select and copy them for troubleshooting.",
         "面板最上方的绘画计时用于单独统计实际绘画时间。它只记录你画画的时间，不会影响序列帧录制和视频导出。": "The painting timer at the top of the panel separately tracks actual painting time. It only tracks painting time and does not affect image sequence recording or video export.",
         "界面状态": "UI State",
         "状态": "State",
@@ -750,8 +748,10 @@
         "OK Record 面板缩到最小时显示三个主要功能。": "OK Record panel at its minimum size, showing the three main controls.",
         "截图待放：OK Record 面板缩到最小时显示三个主要功能。": "Screenshot placeholder: OK Record panel at its minimum size, showing the three main controls.",
         "自动录制": "Automatic Recording",
-        "点击开始录制后，OK Record 会按采样间隔自动保存序列帧。录制中再次点击按钮可暂停；暂停后再次点击可继续。需要清空序列帧时，按住": "After you click Start Recording, OK Record automatically saves image sequence frames by sampling interval. Click the button again while recording to pause; click again after pausing to continue. To clear sequence frames, hold",
-        "点击录制按钮，并在弹窗中确认。": "and click the recording button, then confirm in the dialog.",
+        "点击开始录制后，OK Record 会按采样间隔自动保存序列帧。录制中再次点击按钮可暂停；暂停后再次点击可继续。需要清空序列帧时，点击红色": "After you click Start Recording, OK Record automatically saves image sequence frames by sampling interval. Click the button again while recording to pause; click again after pausing to continue. To clear sequence frames, click the red",
+        "按钮，并在弹窗中确认。": "button and confirm in the dialog.",
+        "暂停录制后可以点击": "After pausing recording, you can click",
+        "。选择新目录会结束当前暂停录制状态，面板回到开始录制，并按新目录恢复或扫描时间线。": ". Choosing a new folder ends the current paused recording state, returns the panel to Start Recording, and restores or scans the timeline from the new folder.",
         "手动采样": "Manual Capture",
         "手动采样会立即保存当前画面，适合记录草图完成、大色块完成、细化前、完稿前等重要阶段。它保存的是单张阶段图，不影响正常延时录制。": "Manual Capture immediately saves the current canvas. It is useful for important stages such as finished sketch, blocked-in colors, before detailing, or before final polish. It saves one stage image and does not affect normal timelapse recording.",
         "功能": "Feature",
@@ -763,29 +763,30 @@
         "继续正常绘画；需要暂停时再次点击录制按钮。": "Keep painting normally; click the recording button again when you need to pause.",
         "暂停录制": "Paused",
         "暂停后不会继续自动保存新的序列帧。": "After pausing, no new automatic sequence frames are saved.",
-        "再次点击可继续录制；需要清空序列帧时，按住": "Click again to continue recording. To clear sequence frames, hold",
-        "点击录制按钮并确认。": "and click the recording button, then confirm.",
+        "再次点击可继续录制；也可以导出当前时间线。需要切换 OK-Record 保存目录时，选择新目录会结束当前暂停录制状态。": "Click again to continue recording. You can also export the current timeline. If you need to switch the OK-Record save folder, choosing a new folder ends the current paused recording state.",
         "用于立即保存当前画面，记录一个重要阶段。": "Use it to save the current canvas immediately as an important stage.",
         "在草图、大色块、细化前等节点点击手动采样。": "Click Manual Capture at moments such as sketch, color block-in, or before detailing.",
         "采样计数": "Capture Count",
         "显示本次已经手动保存了多少张阶段图。": "Shows how many stage images have been manually saved in this session.",
         "继续点击手动采样会累加数量，不影响自动录制。": "Clicking Manual Capture again increases the count and does not affect automatic recording.",
         "保存和打开目录": "Save and Open Folders",
-        "序列帧保存目录用来设置项目保存目录。手动选择后，OK Record 会直接在你选的目录下创建": "Sequence Frame Save Folder sets the project save folder. After manual selection, OK Record directly creates",
+        "指定 OK-Record 保存目录": "Choose OK-Record Save Folder",
+        "用来设置当前录制项目目录。手动选择后，OK Record 会直接在你选的目录下创建": "sets the current recording project folder. After manual selection, OK Record directly creates",
+        "。这个选择只绑定当前 PSD/PSB；如果要让增量 PSD/PSB 续录到同一个项目，需要在那个文件里再次选择同一个项目目录。": ". This choice is bound only to the current PSD/PSB; to continue an incremental PSD/PSB in the same project, choose that same project folder again in that file.",
+        "正在录制或正在写入时不能切换保存目录。暂停录制时可以切换目录；切换后当前暂停录制会结束，之后会按新目录恢复或重新开始。": "You cannot switch the save folder while recording or writing. You can switch folders while recording is paused; after switching, the current paused recording ends, and later recording restores or starts from the new folder.",
         "和": "and",
         "如果没有手动选择目录，且 Photoshop 文档已经保存，OK Record 会在 PSD 同级目录创建": "If you do not manually choose a folder and the Photoshop document has been saved, OK Record creates a",
-        "文件夹。": "folder beside the PSD.",
+        "文件夹。新保存的其他 PSD/PSB 默认使用自己的项目文件夹。需要回到默认目录时，重新选择这个默认项目文件夹即可。": "folder beside the PSD. Newly saved different PSD/PSB files use their own project folder by default. To return to the default folder, choose that default project folder again.",
         "打开序列帧目录和打开步骤图目录可以快速进入对应文件夹。": "Open Sequence Folder and Open Step Folder quickly open the corresponding folders.",
-        "序列帧保存目录的位置。": "Sequence frame save folder location.",
-        "截图待放：序列帧保存目录的位置。": "Screenshot placeholder: sequence frame save folder location.",
-        "步骤图保存目录的位置。": "Step image save folder location.",
-        "截图待放：步骤图保存目录的位置。": "Screenshot placeholder: step image save folder location.",
+        "OK-Record 保存目录的位置。": "OK-Record save folder location.",
+        "截图待放：OK-Record 保存目录的位置。": "Screenshot placeholder: OK-Record save folder location.",
         "采样参数": "Sampling Settings",
         "采样间隔：自动录制多久保存一帧。间隔越短，记录越细，文件也会更多。": "Sampling interval: how often automatic recording saves one frame. A shorter interval captures more detail and creates more files.",
         "延迟采样：到达采样时间后，先等待 Photoshop 空闲，再保存画面。": "Delayed capture: after the sampling time arrives, wait for Photoshop to become idle before saving the canvas.",
         "最长等待时间：如果一直没有等到空闲，超过这个时间后仍会保存一帧。": "Maximum wait time: if Photoshop never becomes idle, a frame is still saved after this time is reached.",
         "导出设置用于把序列帧合成为 MP4 视频。": "Export settings combine image sequence frames into an MP4 video.",
         "录制中请先暂停再导出。暂停后可以直接导出，也可以继续录制，新的序列帧会接在原来的尾号后面。": "Pause before exporting. After pausing, you can export directly or continue recording; new frames continue after the existing frame numbers.",
+        "导出完成或导出失败都会弹出提醒窗口。导出路径、日志路径和错误详情也会保留在面板底部，可以选中复制。": "Export completion and export failure both show an alert dialog. The output path, log path, and error details are also kept at the bottom of the panel, where they can be selected and copied.",
         "导出视频：使用当前或已选择的序列帧目录导出 MP4。": "Export Video: exports an MP4 from the current or selected image sequence folder.",
         "选择序列帧目录：导出以前录制过的内容时使用。": "Choose Sequence Folder: use this when exporting an older recording.",
         "打开导出目录：快速查看导出的 MP4 文件。": "Open Export Folder: quickly view exported MP4 files.",
@@ -810,7 +811,7 @@
         "：临时文件。": ": temporary files.",
         "manifest.json": "manifest.json",
         "：录制信息文件。": ": recording information file.",
-        "如果你手动选择了保存目录，插件会直接在你选择的目录下创建同样的两个文件夹。": "If you manually choose a save folder, the plugin creates the same two folders directly inside your selected folder.",
+        "如果你手动选择了 OK-Record 保存目录，插件会直接在你选择的项目目录下创建同样的两个文件夹。这个选择只绑定当前 PSD/PSB；新保存的其他 PSD/PSB 默认使用自己的项目文件夹。重新选择当前 PSD 的默认项目目录即可回到自动目录。": "If you manually choose an OK-Record save folder, the plugin creates the same two folders directly inside the selected project folder. This choice is bound only to the current PSD/PSB; newly saved different PSD/PSB files use their own project folder by default. Choose the current PSD's default project folder again to return to the automatic folder.",
         "录制文件夹和步骤图文件夹路径。": "Recording folder and step image folder paths.",
         "截图待放：录制文件夹和步骤图文件夹路径。": "Screenshot placeholder: recording folder and step image folder paths.",
         "FFmpeg 是用来把序列帧导出成 MP4 视频的工具。": "FFmpeg is the tool used to export image sequences as MP4 videos.",
@@ -830,7 +831,7 @@
         "录制过程中改了画布尺寸怎么办": "What if the canvas size changes during recording",
         "同一比例的画布尺寸变化会在导出时统一缩放。 如果检测到不同比例的序列帧，OK Record 会让你选择自动补边合并、忽略少数比例帧，或手动清理后再导出。": "Canvas size changes with the same aspect ratio are normalized during export. If different aspect ratios are detected, OK Record asks whether to pad and merge, ignore the smaller ratio group, or clean up manually before exporting.",
         "Photoshop 或电脑中途崩溃怎么办": "What if Photoshop or the computer crashes",
-        "已经写入磁盘的序列帧通常还在。重新打开 Photoshop 后，继续使用同一个 PSD 或手动选择之前的保存目录，再尝试导出视频。": "Frames already written to disk are usually still there. After reopening Photoshop, keep using the same PSD or manually choose the previous save folder, then try exporting again.",
+        "已经写入磁盘的序列帧通常还在。重新打开 Photoshop 后，继续使用同一个 PSD，或手动选择之前的 OK-Record 保存目录，再尝试导出视频。": "Frames already written to disk are usually still there. After reopening Photoshop, keep using the same PSD or manually choose the previous OK-Record save folder, then try exporting again.",
         "如果使用过程中遇到问题，可以通过下面方式联系作者：": "If you run into problems, contact the author here:",
         "QQ：100209743": "QQ: 100209743",
         "B站：-BADBRUSH-": "Bilibili: -BADBRUSH-"

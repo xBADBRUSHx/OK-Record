@@ -83,6 +83,7 @@ const exportActionRowGapCss = sliceBetween(".ok-record-export-action-row-gap {",
 const exportButtonRowGapCss = sliceBetween(".ok-record-export-button-row-gap {", ".ok-record-export-input-row-gap {");
 const exportInputRowGapCss = sliceBetween(".ok-record-export-input-row-gap {", ".ok-record-directory-row button {");
 const directoryRowButtonCss = sliceBetween(".ok-record-directory-row button {", ".ok-record-compact-button {");
+const dangerButtonCss = sliceBetween(".ok-record-danger-button {", ".ok-record-compact-button {");
 const recordingStatusButtonCss = sliceBetween(".ok-record-record-status-button,", ".ok-record-step-indicator {");
 const exportStatusButtonCss = sliceBetween(".ok-record-export-status-button {", ".ok-record-record-status-button .ok-record-button-label,");
 const recordingActiveStatusCss = sliceBetween(".ok-record-record-status-button.ok-record-state-active {", "  button:disabled,");
@@ -265,5 +266,7 @@ assert(directoryRowButtonCss.includes("height: 32px"), "recording directory butt
 assert(directoryRowButtonCss.includes("min-height: 32px"), "recording directory buttons must not grow taller than the requested 32px baseline");
 assert(directoryRowButtonCss.includes("max-height: 32px"), "recording directory buttons must not exceed the requested 32px height");
 assert(directoryRowButtonCss.includes("padding: 0 10px"), "recording directory buttons must not use native vertical padding that expands height");
+assert(dangerButtonCss.includes("border-color: rgba(255, 102, 102, 0.72)"), "clear sequence-frame button must use a red danger border");
+assert(dangerButtonCss.includes("background: rgba(255, 90, 90, 0.14)"), "clear sequence-frame button must use a restrained red fill");
 
 console.log("panel-styles tests passed");

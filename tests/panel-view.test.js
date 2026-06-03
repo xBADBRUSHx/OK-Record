@@ -122,7 +122,7 @@ function assertPrimaryActionsGroup(group, refs) {
   assert(hasClass(body.children[4], "ok-record-step-row"), "manual sampling button must sit under recording");
   assertPaintingTimerControls(refs);
   assert.strictEqual(textOf(refs.startRecordingButtonNode), "录制中 3 张", "recording button must render status text through panel-view");
-  assert.strictEqual(refs.startRecordingButtonNode.getAttribute("aria-label"), "开始、暂停或继续录制；Ctrl+Shift+Alt+点击清空序列帧", "recording button must expose the high-friction clear shortcut");
+  assert.strictEqual(refs.startRecordingButtonNode.getAttribute("aria-label"), "开始、暂停或继续录制", "recording button must expose only recording control");
   assert(hasClass(refs.startRecordingButtonNode.querySelector(".ok-record-record-indicator-slot"), "ok-record-record-indicator-slot"), "recording status must reserve an indicator slot while active");
   assert.strictEqual(textOf(refs.captureNowButtonNode), "手动采样 2 张", "manual sampling button must show the sampled count");
   assert(!hasClass(refs.captureNowButtonNode.querySelector(".ok-record-step-indicator"), "ok-record-step-indicator-hidden"), "manual sampling indicator must be visible after sampling");
@@ -139,16 +139,20 @@ function assertRecordingGroup(group, refs) {
   assert(hasClass(body.children[8], "ok-record-directory-row"), "recording save directory buttons must be a compact directory row");
   assert(hasClass(body.children[9], "ok-record-recording-button-row-gap"), "save and open directory rows must use a 12px spacer node");
   assert(hasClass(body.children[10], "ok-record-directory-row"), "recording open directory buttons must be a compact directory row");
+  assert(hasClass(body.children[11], "ok-record-recording-button-row-gap"), "open and clear directory rows must use a 12px spacer node");
+  assert(hasClass(body.children[12], "ok-record-clear-recording-row"), "clear sequence-frame button must sit under the directory controls");
 
   assert.deepStrictEqual(
     group.querySelectorAll(".ok-record-field-label").map(textOf),
     ["采样间隔", "延迟采样", "最长等待时间", "空闲暂停绘画计时"],
     "OK-Record settings group must expose the expected field labels",
   );
-  assert.strictEqual(textOf(refs.chooseFrameOutputDirButtonNode), "序列帧保存目录");
+  assert.strictEqual(textOf(refs.chooseProjectOutputDirButtonNode), "指定 OK-Record 保存目录");
   assert.strictEqual(textOf(refs.openFrameOutputDirButtonNode), "打开序列帧目录");
-  assert.strictEqual(textOf(refs.chooseStepOutputDirButtonNode), "步骤图保存目录");
+  assert.strictEqual(refs.chooseStepOutputDirButtonNode, undefined, "step image directory must not have an independent picker");
   assert.strictEqual(textOf(refs.openStepOutputDirButtonNode), "打开步骤图目录");
+  assert.strictEqual(textOf(refs.clearRecordingTimelineButtonNode), "清空序列帧");
+  assert(hasClass(refs.clearRecordingTimelineButtonNode, "ok-record-danger-button"), "clear sequence-frame button must use the red danger style");
   assert.strictEqual(refs.intervalSecondsInputNode.value, "2");
   assert.strictEqual(refs.intervalMinutesInputNode, undefined, "recording interval must not keep a retired minute input ref");
   assert.strictEqual(refs.captureOnlyChangedInputNode, undefined, "recording settings must not keep a retired change-only checkbox ref");

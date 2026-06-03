@@ -51,6 +51,9 @@ struct MetadataOptions {
     uint64_t encodedByteLength = std::numeric_limits<uint64_t>::max();
     std::string sessionId;
     std::string capturedAt = "2026-05-22T00:00:00.000Z";
+    uint32_t components = 4;
+    uint32_t componentSize = 8;
+    std::string pixelFormat = "RGBA";
 };
 
 std::string MetadataJson(uint32_t frameIndex, const std::string& extension = ".jpg", MetadataOptions options = {}) {
@@ -75,9 +78,9 @@ std::string MetadataJson(uint32_t frameIndex, const std::string& extension = ".j
     json << "  \"jpegQuality\": " << jpegQuality << ",\n";
     json << "  \"width\": 4,\n";
     json << "  \"height\": 2,\n";
-    json << "  \"components\": 4,\n";
-    json << "  \"componentSize\": 8,\n";
-    json << "  \"pixelFormat\": \"RGBA\",\n";
+    json << "  \"components\": " << options.components << ",\n";
+    json << "  \"componentSize\": " << options.componentSize << ",\n";
+    json << "  \"pixelFormat\": \"" << options.pixelFormat << "\",\n";
     json << "  \"colorSpace\": \"RGB\",\n";
     json << "  \"colorProfile\": \"sRGB\",\n";
     json << "  \"byteLength\": " << options.byteLength << ",\n";
@@ -250,6 +253,20 @@ int main() {
         assert(pngMetadata.frameExtension == ".png");
         assert(pngMetadata.frameQualityPreset == "lossless");
         assert(pngMetadata.jpegQuality == 0);
+
+        const fs::path mixedRgbRgbaTimelineRoot = root / "mixed-rgb-rgba-recordings";
+        const fs::path mixedRgbRgbaFramesDir = mixedRgbRgbaTimelineRoot / "frames";
+        WriteCommittedFrame(mixedRgbRgbaFramesDir, 1, ".png");
+        MetadataOptions rgbMetadataOptions;
+        rgbMetadataOptions.byteLength = 24;
+        rgbMetadataOptions.components = 3;
+        rgbMetadataOptions.pixelFormat = "RGB";
+        WriteCommittedFrame(mixedRgbRgbaFramesDir, 2, ".png", std::numeric_limits<size_t>::max(), rgbMetadataOptions);
+        const ok_record::RecordingSessionScanSummary mixedRgbRgbaScan = ok_record::ScanRecordingSessions(mixedRgbRgbaTimelineRoot);
+        const ok_record::RecordingSessionScanResult& mixedRgbRgbaTimeline = mixedRgbRgbaScan.sessions.front();
+        assert(mixedRgbRgbaTimeline.frameCount == 2);
+        assert(mixedRgbRgbaTimeline.exportFrameMetadataConsistent);
+        assert(mixedRgbRgbaTimeline.exportable);
 
         const fs::path missingSidecarFramesDir = root / "missing-sidecar" / "frames";
         WriteBytes(missingSidecarFramesDir / "frame_000001.jpg", 12);

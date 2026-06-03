@@ -10,13 +10,19 @@ const contract = readJson("shared/recorder-contract.json");
 const manifest = readJson("uxp/manifest.json");
 const updateManifest = readJson("docs/update.json");
 const uxpMain = readText("uxp/main.js");
+const panelViewModule = readText("uxp/panel-view.js");
+const panelStylesModule = readText("uxp/panel-styles.js");
 const statusMessagesModule = readText("uxp/status-messages.js");
+const settingsModelModule = readText("uxp/domain/settings-model.js");
+const pathPolicyModule = readText("uxp/domain/path-policy.js");
+const recordingContextModule = readText("uxp/domain/recording-context.js");
 const localDocumentation = readText("docs/index.html");
 const architectureDocs = readText("Architecture.md");
 const scopedDocumentationIndex = readText("docs/README.md");
 const scopedChineseDocumentationIndex = readText("docs/zh-CN/README.md");
 const securityPolicy = readText("SECURITY.md");
 const packageInstallNotes = readText("packaging/INSTALL.md");
+const releaseNotes = readText("packaging/RELEASE_NOTES.md");
 const macBuildDocs = readText("docs/mac-build.md");
 const recorderSchedulerModule = readText("uxp/recorder-scheduler.js");
 const nativeModule = readText("native/src/module.cpp");
@@ -53,7 +59,7 @@ assert.strictEqual(contract.sessionLayout.framesDirName, "frames");
 assert.strictEqual(contract.sessionLayout.tempDirName, "temp");
 assert.strictEqual(contract.sessionLayout.exportsDirName, "exports");
 assert.strictEqual(contract.sessionLayout.logsDirName, "logs");
-assert.strictEqual(contract.projectLayout.documentProjectDirSuffix, "-OK-Record");
+assert.strictEqual(contract.projectLayout.documentProjectDirPrefix, "OK-Record_");
 assert.strictEqual(contract.scheduler.defaultIntervalMinutes, 2 / 60);
 assert.strictEqual(contract.scheduler.minIntervalMinutes, 1 / 60);
 assert.strictEqual(contract.scheduler.defaultIdleCaptureDelaySeconds, 0);
@@ -71,7 +77,7 @@ assert.strictEqual(contract.activityTimer.maxIdleTimeoutSeconds, 86400);
 assert.strictEqual(contract.panelSettings.schema, "ok-record.panel-settings.v1");
 assert.strictEqual(contract.panelSettings.filename, "panel-settings.json");
 assert.strictEqual(contract.panelSettings.frameOutputDirField, "frameOutputDir");
-assert.strictEqual(contract.panelSettings.stepOutputDirField, "stepOutputDir");
+assert.strictEqual(contract.panelSettings.frameOutputDocumentKeyField, "frameOutputDocumentKey");
 assert.strictEqual(contract.panelSettings.exportSourceDirField, "exportSourceDir");
 assert.deepStrictEqual(contract.scheduler.documentChangeEvents, [
   "paint",
@@ -322,8 +328,11 @@ assert(uxpMain.includes(`PAINTING_TIMER_STATE_SCHEMA = "${contract.activityTimer
 assert(uxpMain.includes(`PAINTING_TIMER_STATE_FILENAME = "${contract.activityTimer.stateFilename}"`), "UXP painting timer state filename must match the shared contract");
 assert(!uxpMain.includes(`PANEL_SETTINGS_SCHEMA = "${contract.panelSettings.schema}"`), "UXP shell must not duplicate the panel settings schema literal");
 assert(uxpMain.includes("PANEL_SETTINGS_FILENAME = settingsModel.PANEL_SETTINGS_FILENAME"), "UXP panel settings filename must route through the settings model domain");
-assert(uxpMain.includes(contract.panelSettings.frameOutputDirField), "UXP panel settings must persist the custom frame output directory");
-assert(uxpMain.includes(contract.panelSettings.stepOutputDirField), "UXP panel settings must persist the custom step output directory");
+assert(uxpMain.includes(contract.panelSettings.frameOutputDirField), "UXP panel settings must persist the manual OK-Record project output directory");
+assert(settingsModelModule.includes(contract.panelSettings.frameOutputDocumentKeyField), "settings model must persist the current-document binding for the manual project output directory");
+assert(!settingsModelModule.includes("frameOutputDocumentPath"), "settings model must not persist display paths for retired document-bound output dirs");
+assert(!settingsModelModule.includes("stepOutputDir"), "settings model must not persist an independent step-image output directory");
+assert(!pathPolicyModule.includes("manualProjectOutputDir"), "path-policy must not own document-scoped manual project directory precedence");
 assert(uxpMain.includes(contract.panelSettings.exportSourceDirField), "UXP panel settings must persist the export source directory");
 assert(uxpMain.includes("recordPaintingActivity"), "UXP must feed document-change events into the standalone painting activity timer");
 assert(uxpMain.includes("detectPaintingTimerDocumentChange"), "UXP painting timer must detect active document history changes");
@@ -345,8 +354,8 @@ const startPaintingTimerBody = uxpMain.slice(
 assert(!startPaintingTimerBody.includes("accumulatedSeconds: 0"), "Start Timer must not clear accumulated activity time; Reset owns reinitialization");
 assert(!startPaintingTimerBody.includes("eventCount: 0"), "Start Timer must not clear activity event count; Reset owns reinitialization");
 assert(uxpMain.includes("chooseExportSequenceDir"), "UXP export settings must expose a sequence-directory picker");
-assert(uxpMain.includes("getFolder"), "UXP panel must use the UXP folder picker for custom frame output directories");
-assert(uxpMain.includes("getRecorderOutputDirNativePath"), "UXP capture, restore, and export must share the custom frame output directory");
+assert(uxpMain.includes("getFolder"), "UXP panel must use the UXP folder picker for manual OK-Record project directories");
+assert(uxpMain.includes("getRecorderOutputDirNativePath"), "UXP capture, restore, and export must share the project output directory");
 assert(uxpMain.includes("exportHoldSeconds"), "UXP panel settings must persist per-frame hold duration");
 assert(!uxpMain.includes('item.textContent = preset.storageFormat === "png"'), "UXP compression dropdown must not expose JPEG/PNG implementation text");
 assert(!uxpMain.includes("preset.label} JPEG ${preset.jpegQuality}"), "UXP compression dropdown must not expose JPEG quality numbers");
@@ -365,7 +374,7 @@ assert(uxpMain.includes("nativeBridge.writeFrame"), "UXP automatic recording mus
 assert(uxpMain.includes("targetWidth: 0"), "UXP manual sampling must request original-size Photoshop pixels");
 const captureTargetWidthFunction = uxpMain.slice(
   uxpMain.indexOf("function getFrameCaptureTargetWidth"),
-  uxpMain.indexOf("async function getPluginDataNativePath"),
+  uxpMain.indexOf("async function getRecorderOutputDirNativePath"),
 );
 assert(
   captureTargetWidthFunction.indexOf("if (targetWidth <= 0)") >= 0 &&
@@ -382,10 +391,6 @@ const openExportFolderBody = uxpMain.slice(
 );
 const openFrameOutputDirBody = uxpMain.slice(
   uxpMain.indexOf("async function openFrameOutputDir"),
-  uxpMain.indexOf("async function chooseStepOutputDir"),
-);
-const chooseStepOutputDirBody = uxpMain.slice(
-  uxpMain.indexOf("async function chooseStepOutputDir"),
   uxpMain.indexOf("async function openStepOutputDir"),
 );
 const openStepOutputDirBody = uxpMain.slice(
@@ -396,11 +401,11 @@ assert(uxpMain.includes("stepFrameCount"), "UXP manual sampling must track the s
 assert(uxpMain.includes("nativeBridge.exportSequence"), "UXP export must support a selected image-sequence directory through the native bridge");
 assert(uxpMain.includes("nativeBridge.scanSequence"), "UXP must scan selected image-sequence directories through the native bridge before export");
 assert(uxpMain.includes('require("./domain/path-policy")'), "UXP path rules must route through the path-policy domain");
+assert(uxpMain.includes('require("./domain/recording-context")'), "UXP recording document identity rules must route through the recording-context domain");
 assert(uxpMain.includes("function getRecordingsRootDirNativePath"), "UXP must expose one helper for the actual recordings root path");
-assert(uxpMain.includes("pathPolicy.resolveRecordingsRootDir"), "UXP recordings root helper must derive the native recordings child from the path-policy domain");
+assert(uxpMain.includes("requireCurrentRecordingContext().recordingsRootDir"), "UXP recordings root helper must derive from the current recording context");
 assert(openFrameOutputDirBody.includes("await getRecordingsRootDirNativePath()"), "UXP open sequence-frame directory button must open the actual recordings root");
-assert(chooseStepOutputDirBody.includes("const stepOutputDir = await getStepOutputDirNativePath();"), "UXP step directory picker must scan the resolved Steps child directory");
-assert(chooseStepOutputDirBody.includes("scanSequenceFrames(stepOutputDir)"), "UXP step directory picker must not scan the raw selected parent directory");
+assert(!uxpMain.includes("async function chooseStepOutputDir"), "UXP must not expose an independent step-image directory picker");
 assert(openStepOutputDirBody.includes("await getStepOutputDirNativePath()"), "UXP open step directory button must open the resolved Steps child directory");
 for (const openFolderBody of [openExportFolderBody, openFrameOutputDirBody, openStepOutputDirBody]) {
   const successBody = openFolderBody.slice(openFolderBody.indexOf("const result = await shell.openPath"), openFolderBody.indexOf("} catch"));
@@ -412,13 +417,19 @@ const recorderOutputDirBody = uxpMain.slice(
   uxpMain.indexOf("async function getStepOutputDirNativePath"),
 );
 assert(
-  recorderOutputDirBody.includes("pathPolicy.resolveRecorderOutputDir") &&
-    recorderOutputDirBody.indexOf("manualFrameOutputDir: recorderState.frameOutputDir") >= 0 &&
-    recorderOutputDirBody.indexOf("activeDocumentPath: getActiveDocumentNativePath()") > recorderOutputDirBody.indexOf("manualFrameOutputDir: recorderState.frameOutputDir") &&
-    recorderOutputDirBody.indexOf("pluginDataDir: await getPluginDataNativePath()") > recorderOutputDirBody.indexOf("activeDocumentPath: getActiveDocumentNativePath()"),
-  "UXP recorder output root must prefer manual path, then saved local document path, then plugin data folder",
+  recorderOutputDirBody.includes("requireCurrentRecordingContext().outputDir") &&
+    !recorderOutputDirBody.includes("pluginDataDir") &&
+    !recorderOutputDirBody.includes("getPluginDataNativePath"),
+  "UXP recorder output root must require a current recording context and must not fall back to plugin data",
 );
 assert(uxpMain.includes("activeDocument.path"), "UXP recorder output root must read the saved Photoshop document path when no manual path is set");
+assert(uxpMain.includes("activeDocument.cloudDocument"), "UXP recorder output root must reject cloud documents through the recording context");
+assert(uxpMain.includes("function assertSavedDocumentForRecording"), "UXP automatic recording must enforce a saved document precondition before starting");
+assert(recordingContextModule.includes("请先保存 Photoshop 文档为本地 PSD/PSB 文件"), "recording context failure must tell users to save the PSD/PSB first");
+assert(uxpMain.includes("activeRecordingContext"), "UXP recording must lock the document context while the recording loop is active");
+assert(uxpMain.includes("assertActiveRecordingContextStillCurrent"), "UXP scheduled captures must verify the active Photoshop document still matches the locked recording context");
+assert(uxpMain.includes("isSessionForRecordingContext"), "UXP active sessions must be bound to the current recording context");
+assert(!uxpMain.includes("默认插件数据目录"), "UXP user-facing recording status must not advertise plugin data as an unsaved-document recording fallback");
 assert(!uxpMain.includes("pathPolicy.buildRecordSessionId"), "UXP must not allocate Record timestamp directories after the single-timeline change");
 assert(!uxpMain.includes("pathPolicy.buildUniqueRecordSessionId"), "UXP must not keep same-second Record directory collision logic");
 assert(!uxpMain.includes("forceNewSessionOnNextCapture"), "UXP start recording must append to the document timeline instead of forcing a new Record directory");
@@ -448,6 +459,11 @@ assert(uxpMain.includes("MIN_INTERVAL_SECONDS = MIN_INTERVAL_MINUTES * SECONDS_P
 assert(uxpMain.includes("Math.max(MIN_INTERVAL_SECONDS"), "UXP interval input must clamp manually entered zero back to the minimum");
 assert(uxpMain.includes("DEFAULT_CAPTURE_ONLY_WHEN_CHANGED = settingsModel.DEFAULT_CAPTURE_ONLY_WHEN_CHANGED"), "UXP capture policy default must route through the settings model domain");
 assert(uxpMain.includes("DOCUMENT_CHANGE_EVENTS"), "UXP must declare explicit Photoshop document change events");
+assert(uxpMain.includes('DOCUMENT_CLOSE_EVENT = "close"'), "UXP must name the Photoshop document close event");
+assert(uxpMain.includes("queueDocumentCloseRecordingCheck"), "UXP document close handling must re-check the active document context before stopping recording");
+assert(uxpMain.includes("isActiveRecordingContextStillCurrent"), "UXP document close handling must not stop recording when an unrelated document closes");
+assert(uxpMain.includes("validateReference"), "UXP document close handling must validate the locked Photoshop document reference before stopping recording");
+assert(uxpMain.includes("stopRecordingAfterDocumentClose"), "UXP document close handling must stop the recording runtime immediately");
 for (const eventName of contract.scheduler.documentChangeEvents) {
   assert(uxpMain.includes(`"${eventName}"`), `UXP document change events must include ${eventName}`);
 }
@@ -538,7 +554,7 @@ assert(localDocumentation.includes("截图待放"), "local documentation must ke
 assert(localDocumentation.includes("images/02-install-ccx.jpg"), "local documentation must expose the Creative Cloud install screenshot");
 assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local documentation must expose the Creative Cloud installed-state screenshot");
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
-assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1"'), "local documentation must link to the GitHub Release download page");
+assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2"'), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
 assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");
 assert(localDocumentation.includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "local documentation must translate the Photoshop version requirement");
@@ -548,10 +564,30 @@ assert(readText("README.md").includes("作者目前没有 macOS 开发环境，�
 assert(readText("README.en.md").includes("The author currently does not have a macOS development environment and cannot deploy or test the macOS version."), "English README must clearly explain the macOS support boundary");
 assert(!localDocumentation.includes("images/01-release-download.png"), "local documentation must not keep the retired Release screenshot placeholder");
 assert(!localDocumentation.includes("截图预留"), "local documentation must not keep retired plain placeholder blocks");
-assert(localDocumentation.includes("开始录制前，建议先在面板中手动设置保存目录"), "local documentation must recommend manual save-folder setup first");
-assert(localDocumentation.includes("如果没有手动设置保存目录，OK Record 会自动存放到 Photoshop 文档的保存路径附近。"), "local documentation must describe the saved-document folder fallback");
-assert(localDocumentation.includes("如果 Photoshop 文档也还没有保存，录制文件会放到 OK Record 的默认路径。"), "local documentation must describe the OK Record default folder fallback");
-assert(localDocumentation.includes("Before recording, set the save folder manually in the panel first"), "local documentation must translate the save-folder priority");
+assert(localDocumentation.includes("开始录制前，先把 Photoshop 文档保存为本地 PSD/PSB 文件"), "local documentation must describe the local PSD/PSB recording precondition");
+assert(localDocumentation.includes("保存过的 PSD/PSB 即使当前画布还有未保存修改，也可以继续录制"), "local documentation must clarify that saved-but-dirty documents may keep recording");
+assert(localDocumentation.includes("如果文档从未保存到本地目录，点击开始录制会提示先保存，不会写入序列帧。"), "local documentation must describe the never-saved document block");
+assert(localDocumentation.includes("手动指定只对当前 PSD/PSB 生效"), "local documentation must describe document-scoped manual project folders");
+assert(localDocumentation.includes("需要让增量 PSD/PSB 续写旧项目时"), "local documentation must describe explicit manual joining for incremental PSD recording");
+assert(localDocumentation.includes("录制失败、手动采样失败、导出完成或导出失败时，插件会弹出提醒窗口。"), "local documentation must describe blocking dialogs for important results");
+assert(localDocumentation.includes("暂停录制后可以点击"), "local documentation must describe choosing the OK-Record save folder while paused");
+assert(localDocumentation.includes("正在录制或正在写入时不能切换保存目录。"), "local documentation must describe when the save folder cannot be changed");
+assert(localDocumentation.includes("导出完成或导出失败都会弹出提醒窗口。"), "local documentation must describe export completion and failure dialogs");
+assert(!localDocumentation.includes("如果 Photoshop 文档也还没有保存，录制文件会放到 OK Record 的默认路径。"), "local documentation must not describe plugin-data recording fallback for unsaved documents");
+assert(localDocumentation.includes("A saved PSD/PSB can keep recording even when the current canvas has unsaved edits."), "local documentation must translate the saved-but-dirty recording rule");
+assert(localDocumentation.includes("If the document has never been saved to a local folder"), "local documentation must translate the never-saved document block");
+assert(localDocumentation.includes("a manual choice applies only to the current PSD/PSB"), "local documentation must translate document-scoped manual project folders");
+assert(localDocumentation.includes("To continue an incremental PSD/PSB in an older project"), "local documentation must translate explicit manual joining for incremental PSD recording");
+assert(localDocumentation.includes("the plugin shows an alert dialog"), "local documentation must translate blocking dialogs for important results");
+assert(localDocumentation.includes("After pausing recording, you can click"), "local documentation must translate choosing the OK-Record save folder while paused");
+assert(localDocumentation.includes("You cannot switch the save folder while recording or writing."), "local documentation must translate save-folder lockout while recording or writing");
+assert(localDocumentation.includes("Export completion and export failure both show an alert dialog."), "local documentation must translate export completion and failure dialogs");
+assert(readText("README.md").includes("暂停录制时可以重新指定 OK-Record 保存目录"), "Chinese README must describe save-folder changes while paused");
+assert(readText("README.en.md").includes("You can choose a new OK-Record save folder while recording is paused."), "English README must describe save-folder changes while paused");
+assert(readText("README.md").includes("录制失败、手动采样失败、导出完成和导出失败都会弹出提醒窗口"), "Chinese README must describe important-result dialogs");
+assert(readText("README.en.md").includes("Recording failures, manual capture failures, export completion, and export failures show an alert dialog."), "English README must describe important-result dialogs");
+assert(!releaseNotes.includes("Ctrl+Shift+Alt 点击录制按钮仍会尝试触发同一清空流程"), "release notes must not describe the retired Ctrl+Shift+Alt clear-frame path");
+assert(!releaseNotes.includes("The clear sequence-frame-directory shortcut is now Ctrl+Shift+Alt click"), "release notes must not describe the retired Ctrl+Shift+Alt clear-frame shortcut");
 assert(localDocumentation.includes("面板最上方的绘画计时用于单独统计实际绘画时间。"), "local documentation must explain the painting timer");
 assert(localDocumentation.includes("timer-state-table"), "local documentation must present painting timer states as a table");
 assert(localDocumentation.includes("OK-Record 设置主要用于控制绘画计时、自动序列帧录制和手动采样。"), "local documentation must keep OK-Record settings text-first");
@@ -589,13 +625,11 @@ for (const translatedRecordingState of [
 }
 for (const controlImageName of [
   "08_序列帧保存目录.jpg",
-  "08_步骤图保存目录.jpg",
   "08_选择要导出的目录.jpg",
 ]) {
   assert(localDocumentation.includes(`images/${controlImageName}`), `local documentation must include control screenshot ${controlImageName}`);
 }
-assert(localDocumentation.includes("Sequence frame save folder location."), "local documentation must translate the sequence folder screenshot caption");
-assert(localDocumentation.includes("Step image save folder location."), "local documentation must translate the step folder screenshot caption");
+assert(localDocumentation.includes("OK-Record save folder location."), "local documentation must translate the project folder screenshot caption");
 assert(localDocumentation.includes("Choose the image sequence folder to export."), "local documentation must translate the export-folder screenshot caption");
 assert(!localDocumentation.includes("每帧停留决定每张序列帧在视频里停留多久；视频时长可以反推每帧停留时间。"), "local documentation must not keep the dense export settings paragraph");
 for (const exportOptionCopy of [
@@ -645,7 +679,6 @@ assert(localDocumentation.includes("QQ：100209743"), "local documentation must 
 assert(localDocumentation.includes("B站：-BADBRUSH-"), "local documentation must include the Bilibili contact");
 assert(localDocumentation.includes("10. Contact the Author"), "local documentation must translate the contact section");
 assert(!localDocumentation.includes("10. 推荐用法"), "local documentation must remove the recommended workflow section title");
-assert(!localDocumentation.includes("先保存 PSD/PSB 文件。"), "local documentation must remove the retired recommended workflow checklist");
 for (const pagesImageName of [
   "02-install-ccx.jpg",
   "02-install-ccx_2.jpg",
@@ -662,7 +695,6 @@ for (const pagesImageName of [
   "06-手动采样-未采样.jpg",
   "06-手动采样-已采样数量.jpg",
   "08_序列帧保存目录.jpg",
-  "08_步骤图保存目录.jpg",
   "08_选择要导出的目录.jpg",
   "07-文件夹路径.jpg",
 ]) {
@@ -690,20 +722,31 @@ assert(uxpMain.includes("openUpdateDownloadPage"), "UXP must expose a download-p
 assert(uxpMain.includes("shell.openExternal"), "UXP must open the GitHub Release download page through the UXP shell external-url API");
 assert(uxpMain.includes("UPDATE_RELEASES_URL_PREFIX"), "UXP update manifest URLs must stay constrained to OK Record GitHub Releases");
 assert(buildReleaseWindowsScript.includes('"docs\\index.html"'), "Windows package must include the root documentation entry");
+assert(buildReleaseWindowsScript.includes('"domain\\recording-context.js"'), "Windows package must include the recording-context domain module");
 assert(buildReleaseWindowsScript.includes('$documentationImageRoot = Join-Path $repoRoot "docs\\images"'), "Windows package must read documentation images from the root docs source");
 assert(buildReleaseWindowsScript.includes("$documentationPayload"), "Windows package must include optional local documentation files and images");
 assert(buildReleaseWindowsScript.includes('"docs\\images\\$($_.Name)"'), "Windows package must preserve local documentation image paths");
 assert(buildReleaseWindowsScript.includes("OK-Record-User-Guide.html"), "Windows package must include a root-level user guide HTML copy for extracted packages");
 assert(buildReleaseWindowsScript.includes('.Replace("images/", "docs/images/")'), "Windows package root-level user guide must resolve packaged image paths");
+assert(buildReleaseMacScript.includes('"domain/recording-context.js"'), "macOS package must include the recording-context domain module");
 assert(!uxpMain.includes("ok-record-timer-time"), "UXP painting timer must not keep the split time node");
 assert(uxpMain.includes("setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);"), "UXP recording button must remain enabled while active so busy capture states do not gray out the stop control");
 assert(!uxpMain.includes("；Alt+点击清空序列帧"), "UXP recording button must not expose the old Alt-click clear-frames affordance");
-assert(uxpMain.includes("Ctrl+Shift+Alt+点击清空序列帧"), "UXP recording button must expose the high-friction clear-frames shortcut");
-assert(uxpMain.includes("function isRecordingClearShortcut"), "UXP recording clear shortcut must have one named predicate");
-assert(uxpMain.includes("event.ctrlKey && event.shiftKey && event.altKey"), "UXP recording clear shortcut must require Ctrl+Shift+Alt");
+assert(!uxpMain.includes("Ctrl+Shift+Alt+点击也可清空"), "UXP recording button must not advertise the retired clear-frame shortcut");
+assert(!uxpMain.includes("function isRecordingClearShortcut"), "UXP recording button must not keep a clear-frame shortcut predicate");
+assert(!uxpMain.includes("event.ctrlKey && event.shiftKey && event.altKey"), "UXP recording button must not branch on Ctrl+Shift+Alt for clearing frames");
+assert(uxpMain.includes("clearRecordingTimelineButtonNode"), "UXP panel must expose a visible clear sequence-frame button");
+assert(panelViewModule.includes("指定 OK-Record 保存目录"), "UXP panel must label the project directory picker as an explicit choose action");
+assert(uxpMain.includes("chooseProjectOutputDirButtonNode.disabled = recordingLoopActive"), "UXP project directory picker must stay disabled while actively recording");
+assert(!uxpMain.includes("chooseProjectOutputDirButtonNode.disabled = activeRecordingSession || busy"), "UXP project directory picker must not stay disabled only because recording is paused");
+assert(uxpMain.includes("showBlockingNotice"), "UXP important recording and export notices must route through the blocking alert helper");
+assert(uxpMain.includes("alert(message)"), "UXP blocking notices must use the native alert dialog when available");
+assert(uxpMain.includes("CLEAR_RECORDING_PANEL_MENU_ID"), "UXP panel flyout menu must expose an explicit clear sequence-frame action");
+assert(uxpMain.includes("清空序列帧_Clear Frames"), "UXP panel flyout menu must label the explicit clear sequence-frame action");
 assert(uxpMain.includes("clearRecordingTimeline"), "UXP panel must keep an explicit clear-recording handler");
 assert(uxpMain.includes('typeof confirm !== "function"'), "UXP clear-frames action must fail closed when no confirmation dialog is available");
 assert(uxpMain.includes("nativeBridge.clearRecording"), "UXP clear-frames action must route through the native bridge");
+assert.deepStrictEqual(manifest.featureFlags, { enableAlerts: true }, "UXP manifest must enable confirm dialogs for destructive clear-frame confirmation");
 assert(uxpMain.includes('require("./status-messages")'), "UXP user-facing status text must route through the status messages module");
 assert(uxpMain.includes("buildExportSuccessMessages"), "UXP export success must use the status message mapper");
 assert(uxpMain.includes("buildExportFailureMessages"), "UXP export failure must use the status message mapper");
@@ -715,10 +758,9 @@ assert(!uxpMain.includes("resumeRecordingButtonNode"), "UXP panel must not keep 
 assert(!uxpMain.includes("stopRecordingButtonNode"), "UXP panel must not keep the retired separate stop button node");
 assert(!uxpMain.includes("pauseRecordingButtonNode"), "UXP panel must not keep a separate pause button node");
 assert(!uxpMain.includes("toggleRecordingPause"), "UXP panel must not keep a separate pause/resume UI toggle");
-assert(uxpMain.includes("toggleRecording"), "UXP panel must use one recording button for start, pause, resume, and high-friction clear");
+assert(uxpMain.includes("toggleRecording"), "UXP panel must use one recording button for start, pause, and resume");
 assert(uxpMain.includes("await pauseRecording();"), "UXP recording button ordinary click must pause while recording");
 assert(uxpMain.includes("await resumeRecording();"), "UXP recording button ordinary click must resume while paused");
-assert(uxpMain.includes("await clearRecordingTimeline();"), "UXP recording button Ctrl+Shift+Alt-click must clear recording frames after confirmation");
 assert(uxpMain.includes("getRecordingFrameCountText"), "UXP recording button must show the sampled frame count in active and paused states");
 assert(uxpMain.includes("recordingPauseRequested"), "UXP recording button must handle pause requests during capture/write without becoming a stop button");
 assert(uxpMain.includes("async function stopRecordingRuntimeSchedulers"), "UXP recorder failures must share runtime scheduler cleanup");
@@ -729,7 +771,8 @@ assert(
 assert(uxpMain.includes("ok-record-state-active"), "UXP panel must color active states instead of permanently coloring primary actions");
 assert(!uxpMain.includes('createButton("暂停"'), "UXP panel must not expose a separate pause button");
 assert(!uxpMain.includes("ok-record-primary-button"), "UXP panel must not permanently color ordinary action buttons as primary");
-assert(!uxpMain.includes("ok-record-danger-button"), "UXP panel must not keep a separate always-red stop button");
+assert(panelViewModule.includes("ok-record-danger-button"), "UXP panel must render the visible clear sequence-frame button with the danger style class");
+assert(panelStylesModule.includes(".ok-record-danger-button"), "UXP panel must define a red danger style for the visible clear sequence-frame button");
 assert(nativeModule.includes("write_frame"), "native addon must expose the main frame writer");
 assert(nativeModule.includes("write_step_frame"), "native addon must expose the manual step PNG writer");
 assert(nativeModule.includes("scan_recordings"), "native addon must expose the frame directory scanner");
@@ -840,8 +883,8 @@ assert(nativeSources.includes(contract.frame.legacyRawStorageFormat), "native wr
 assert(nativeModule.includes("GUID_ContainerFormatJpeg"), "native writer must encode default frame storage through WIC JPEG");
 assert(nativeModule.includes("GUID_ContainerFormatPng"), "native writer must encode lossless frame storage through WIC PNG");
 assert(nativeModule.includes("CGImageDestinationCreateWithURL"), "native writer must encode JPEG/PNG through ImageIO on macOS");
-assert(nativeModule.includes('pixelFormat == "RGB" && components == 3'), "native writer must accept opaque RGB 8-bit pixels returned by Photoshop imaging");
-assert(nativeModule.includes('pixelFormat == "RGBA" && components == 4'), "native writer must continue accepting RGBA 8-bit pixels returned by Photoshop imaging");
+assert(nativeSources.includes('pixelFormat == "RGB" && components == 3'), "native writer must accept opaque RGB 8-bit pixels returned by Photoshop imaging");
+assert(nativeSources.includes('pixelFormat == "RGBA" && components == 4'), "native writer must continue accepting RGBA 8-bit pixels returned by Photoshop imaging");
 assert(nativeModule.includes("ConvertRgbSourceToBgrOnWhite"), "native JPEG writer must normalize RGB/RGBA source pixels before encoding");
 assert(nativeModule.includes("ConvertRgbSourceToBgra"), "native PNG writer must normalize RGB/RGBA source pixels before encoding");
 assert(nativeExportRunnerModule.includes("posix_spawn"), "native exporter must run FFmpeg through the macOS process API");
@@ -872,7 +915,7 @@ assert(uxpMain.includes("ensureActiveSessionForCapture"), "UXP must append captu
 assert(uxpMain.includes("scheduleNextCapture"), "UXP must include the interval capture scheduler");
 assert(uxpMain.includes("nativeBridge.exportSession"), "UXP must call the native FFmpeg exporter through the native bridge");
 assert(nativeSources.includes("firstFrameMetadataJson"), "native scanner must return first-frame metadata for timeline geometry");
-assert(nativeSources.includes("exportFrameMetadataConsistent"), "native scanner must flag mixed-format timelines");
+assert(nativeSources.includes("exportFrameMetadataConsistent"), "native scanner must flag export-incompatible timelines");
 assert(nativeSources.includes("aspectRatioConsistent"), "native scanner must flag mixed-aspect-ratio timelines");
 assert(nativeSources.includes("CollectOrphanFramePaths"), "native scanner must report orphan frame files separately from committed frames");
 assert(nativeSources.includes("FindFirstMissingCommittedFrameIndex"), "native scanner must flag gapped committed frame sequences");
@@ -884,4 +927,6 @@ assert(nativeSources.includes("InvalidRecordingSessionScanResult"), "native scan
 assert(nativeModule.includes(contract.scan.invalidSessionsField), "native scan result must expose invalid timeline diagnostics");
 assert(nativeModule.includes(contract.scan.hasInvalidSessionsField), "native scan result must expose whether invalid timeline diagnostics exist");
 assert(nativeModule.includes(contract.scan.invalidSessionCountField), "native scan result must expose the invalid timeline count");
-assert(nativeModule.includes("write_frame metadata is incompatible with existing timeline"), "native writer must reject mixed-format frame appends while allowing dimension changes");
+assert(nativeSources.includes("IsTimelineFrameFormatCompatible"), "native scanner/exporter must share the timeline frame-format compatibility rule");
+assert(nativeModule.includes("IsFrameWriteFormatCompatible"), "native writer must use the timeline frame-format compatibility rule for appends");
+assert(nativeModule.includes("write_frame metadata is incompatible with existing timeline"), "native writer must reject incompatible frame appends while allowing dimension changes and RGB/RGBA source alternation");

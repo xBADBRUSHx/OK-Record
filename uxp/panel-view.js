@@ -223,8 +223,8 @@ function createPrimaryActionsGroup({ refs, buttonStates, handlers }) {
     handlers.onToggleRecording,
     "ok-record-record-status-button",
   );
-  refs.startRecordingButtonNode.title = "开始、暂停或继续录制；Ctrl+Shift+Alt+点击清空序列帧";
-  refs.startRecordingButtonNode.setAttribute("aria-label", "开始、暂停或继续录制；Ctrl+Shift+Alt+点击清空序列帧");
+  refs.startRecordingButtonNode.title = "开始、暂停或继续录制";
+  refs.startRecordingButtonNode.setAttribute("aria-label", "开始、暂停或继续录制");
   renderRecordingStatusLabel(refs.startRecordingButtonNode, buttonStates.recording);
 
   refs.captureNowButtonNode = createControlButton(
@@ -293,13 +293,18 @@ function createRecordingGroup({ refs, state, ranges, handlers }) {
   });
   refs.paintingTimerSecondsInputNode = paintingTimerField.input;
 
-  refs.chooseFrameOutputDirButtonNode = createButton("序列帧保存目录", handlers.onChooseFrameOutputDir);
+  refs.chooseProjectOutputDirButtonNode = createButton("指定 OK-Record 保存目录", handlers.onChooseProjectOutputDir);
   refs.openFrameOutputDirButtonNode = createButton("打开序列帧目录", handlers.onOpenFrameOutputDir);
-  refs.chooseStepOutputDirButtonNode = createButton("步骤图保存目录", handlers.onChooseStepOutputDir);
   refs.openStepOutputDirButtonNode = createButton("打开步骤图目录", handlers.onOpenStepOutputDir);
+  refs.clearRecordingTimelineButtonNode = createButton(
+    "清空序列帧",
+    handlers.onClearRecordingTimeline,
+    "ok-record-danger-button",
+  );
 
-  const saveDirectoryRow = createButtonRow([refs.chooseFrameOutputDirButtonNode, refs.chooseStepOutputDirButtonNode], "ok-record-directory-row");
+  const saveDirectoryRow = createButtonRow([refs.chooseProjectOutputDirButtonNode], "ok-record-directory-row");
   const openDirectoryRow = createButtonRow([refs.openFrameOutputDirButtonNode, refs.openStepOutputDirButtonNode], "ok-record-directory-row");
+  const clearDirectoryRow = createButtonRow([refs.clearRecordingTimelineButtonNode], "ok-record-directory-row ok-record-clear-recording-row");
 
   const group = createPanelGroup("OK-Record 设置", [
     intervalField.field,
@@ -313,6 +318,8 @@ function createRecordingGroup({ refs, state, ranges, handlers }) {
     saveDirectoryRow,
     createSpacer("ok-record-recording-button-row-gap", "div"),
     openDirectoryRow,
+    createSpacer("ok-record-recording-button-row-gap", "div"),
+    clearDirectoryRow,
   ]);
   group.classList.add("ok-record-recording-group");
   return group;

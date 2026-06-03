@@ -2,8 +2,11 @@
   "id": "com.badbrush.okrecord",
   "name": "OK Record",
   "manifestVersion": 6,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "main.js",
+  "featureFlags": {
+    "enableAlerts": true
+  },
   "host": {
     "app": "PS",
     "minVersion": "24.2.0",

@@ -223,6 +223,8 @@ async function run() {
   const timers = [];
   const addonCalls = {
     clearRecording: 0,
+    exportSession: 0,
+    exportSequence: 0,
     scanRecordings: 0,
     scanSequence: 0,
   };
@@ -235,12 +237,27 @@ async function run() {
   const openExternalCalls = [];
   const fetchCalls = [];
   const confirmMessages = [];
+  const alertMessages = [];
+  const actionListeners = [];
+  const folderSelections = [];
+  const writeFrameOutputDirs = [];
+  const openDocumentIds = new Set([1]);
   let writeFrameCount = 0;
   let failStepWrite = false;
+  let failExportSession = false;
   const confirmMock = (message) => {
     confirmMessages.push(String(message || ""));
     return true;
   };
+  const alertMock = (message) => {
+    alertMessages.push(String(message || ""));
+  };
+  async function runNextTimer(message) {
+    const callback = timers.shift();
+    assert(callback, message);
+    callback();
+    await flushMicrotasks();
+  }
   const dataFolder = {
     isFolder: true,
     name: "data",
@@ -280,6 +297,9 @@ async function run() {
             nativePath: path.join(repoRoot, "uxp"),
           };
         },
+        async getFolder() {
+          return folderSelections.shift() || null;
+        },
         getNativePath(entry) {
           return entry && entry.nativePath ? entry.nativePath : "";
         },
@@ -302,9 +322,9 @@ async function run() {
       async json() {
         return {
           schema: "ok-record.update-manifest.v1",
-          version: "1.0.1",
-          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
-          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.1/OK-Record_with-ffmpeg.ccx",
+          version: "1.0.2",
+          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2",
+          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.2/OK-Record_with-ffmpeg.ccx",
           summary: "测试更新提醒",
         };
       },
@@ -312,7 +332,16 @@ async function run() {
   }
   const photoshopMock = {
     action: {
-      async addNotificationListener() {},
+      async addNotificationListener(events, listener) {
+        actionListeners.push({ events, listener });
+      },
+      validateReference(ref) {
+        return Boolean(
+          ref &&
+          ref._ref === "document" &&
+          openDocumentIds.has(Number(ref._id))
+        );
+      },
     },
     core: {
       async addNotificationListener() {
@@ -367,11 +396,12 @@ async function run() {
   };
   const addonMock = {
     write_frame(metadata, arrayBuffer) {
+      writeFrameOutputDirs.push(metadata.outputDir);
       writeFrameCount += 1;
       const sessionId = metadata.sessionId || "Timeline";
       const frameIndex = writeFrameCount;
       const frameName = `frame_${String(frameIndex).padStart(6, "0")}`;
-      const recordingRoot = path.join(dataFolder.nativePath, "延时录制_Recordings");
+      const recordingRoot = path.join(metadata.outputDir, "延时录制_Recordings");
       return {
         sessionId,
         frameIndex,
@@ -413,7 +443,7 @@ async function run() {
         sourceByteLength: arrayBuffer.byteLength,
         encodedByteLength: 12,
         capturedAt: metadata.capturedAt,
-        framePath: path.join(dataFolder.nativePath, "步骤图_Steps", "step_001.png"),
+        framePath: path.join(metadata.outputDir, "step_001.png"),
       };
     },
     scan_recordings() {
@@ -444,6 +474,58 @@ async function run() {
         framesPath: path.join(request.outputDir, "延时录制_Recordings", "frames"),
       };
     },
+    export_session(request) {
+      addonCalls.exportSession += 1;
+      if (failExportSession) {
+        throw new Error("forced export failure");
+      }
+
+      const recordingRoot = path.join(request.outputDir, "延时录制_Recordings");
+      const exportsRoot = path.join(recordingRoot, "exports");
+      return {
+        schema: contract.export.schema,
+        sourceType: "timeline",
+        sourcePath: recordingRoot,
+        sessionId: request.sessionId || "Timeline",
+        frameCount: writeFrameCount,
+        holdSeconds: Number(request.holdSeconds) || 0.1,
+        outputFps: Number(request.outputFps) || 30,
+        outputWidth: 1920,
+        outputHeight: 1080,
+        outputPath: path.join(exportsRoot, "OK_Record.mp4"),
+        logPath: path.join(exportsRoot, "export.log"),
+        progressPath: path.join(exportsRoot, "progress.log"),
+        targetDurationSeconds: Math.max(0.1, writeFrameCount * (Number(request.holdSeconds) || 0.1)),
+        inputFrameStorageFormat: "jpeg",
+        inputFrameExtension: ".jpg",
+        progressParsed: true,
+        progressStatus: "end",
+        progressPercent: 100,
+      };
+    },
+    export_sequence(request) {
+      addonCalls.exportSequence += 1;
+      return {
+        schema: contract.export.schema,
+        sourceType: "directory",
+        sourcePath: request.framesDir,
+        sessionId: "",
+        frameCount: 1,
+        holdSeconds: Number(request.holdSeconds) || 0.1,
+        outputFps: Number(request.outputFps) || 30,
+        outputWidth: 1920,
+        outputHeight: 1080,
+        outputPath: path.join(path.dirname(request.framesDir), "exports", "OK_Record.mp4"),
+        logPath: path.join(path.dirname(request.framesDir), "exports", "export.log"),
+        progressPath: path.join(path.dirname(request.framesDir), "exports", "progress.log"),
+        targetDurationSeconds: Number(request.holdSeconds) || 0.1,
+        inputFrameStorageFormat: "jpeg",
+        inputFrameExtension: ".jpg",
+        progressParsed: true,
+        progressStatus: "end",
+        progressPercent: 100,
+      };
+    },
   };
 
   function mockRequire(request) {
@@ -464,6 +546,9 @@ async function run() {
     }
     if (request === "./domain/path-policy") {
       return require(path.join(repoRoot, "uxp", "domain", "path-policy.js"));
+    }
+    if (request === "./domain/recording-context") {
+      return require(path.join(repoRoot, "uxp", "domain", "recording-context.js"));
     }
     if (request === "./domain/recorder-state") {
       return require(path.join(repoRoot, "uxp", "domain", "recorder-state.js"));
@@ -539,6 +624,7 @@ async function run() {
     },
     clearInterval() {},
     confirm: confirmMock,
+    alert: alertMock,
     fetch: fetchMock,
   };
 
@@ -548,11 +634,13 @@ async function run() {
   const entrypoints = setupCalls[0];
   assert(entrypoints.panels && entrypoints.panels.okRecordPanel, "panel entrypoint must be registered");
   assert.strictEqual(entrypoints.commands, undefined, "Photoshop menu command entrypoints must stay retired");
-  assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems.length, 2, "panel flyout menu must expose documentation and download-page actions");
+  assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems.length, 3, "panel flyout menu must expose documentation, download-page, and clear-frame actions");
   assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems[0].id, "openDocumentation", "documentation flyout menu item must use a stable id");
   assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems[0].label, "文档_Documentation", "documentation flyout menu item must use the requested label");
   assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems[1].id, "openUpdateDownloadPage", "download-page flyout menu item must use a stable id");
   assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems[1].label, "下载页_Download Page", "download-page flyout menu item must use the requested label");
+  assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems[2].id, "clearRecordingTimeline", "clear-frame flyout menu item must use a stable id");
+  assert.strictEqual(entrypoints.panels.okRecordPanel.menuItems[2].label, "清空序列帧_Clear Frames", "clear-frame flyout menu item must use the requested label");
   assert.strictEqual(typeof entrypoints.panels.okRecordPanel.invokeMenu, "function", "panel flyout menu must have an invoke handler");
   entrypoints.panels.okRecordPanel.invokeMenu("openDocumentation");
   await flushMicrotasks();
@@ -566,7 +654,7 @@ async function run() {
   assert.strictEqual(openExternalCalls.length, 1, "download-page flyout menu must open one external URL");
   assert.strictEqual(
     openExternalCalls[0].url,
-    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
+    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2",
     "download-page flyout menu must open the current public release before a newer manifest is fetched",
   );
 
@@ -582,9 +670,14 @@ async function run() {
   const recordingButton = document.querySelector(".ok-record-record-status-button");
   const manualStepButton = document.querySelector(".ok-record-step-status-button");
   const exportButton = document.querySelector(".ok-record-export-status-button");
+  const directoryRows = document.querySelectorAll(".ok-record-directory-row");
+  const chooseProjectOutputDirButton = directoryRows[0] && directoryRows[0].querySelector("button");
+  const clearRecordingButton = document.querySelector(".ok-record-danger-button");
   assert(recordingButton, "recording status button must render");
   assert(manualStepButton, "manual step button must render");
   assert(exportButton, "export status button must render");
+  assert(chooseProjectOutputDirButton, "project save directory button must render");
+  assert(clearRecordingButton, "visible clear sequence-frame button must render");
   assert(exportButton.classList.contains("ok-record-control-button"), "export status button must use the same control surface as recording status buttons");
   assert.strictEqual(exportButton.querySelector(".ok-record-export-indicator"), null, "export status button must not render an idle status dot in the live panel");
   assert(document.querySelector(".ok-record-timer-status-button"), "painting timer status button must render");
@@ -598,7 +691,7 @@ async function run() {
   assert.strictEqual(openPathCalls.length, 1, "only the panel flyout documentation action should open documentation");
   assert.strictEqual(fetchCalls.length, 1, "panel show must fetch the static update manifest once");
   assert.strictEqual(fetchCalls[0], "https://xbadbrushx.github.io/OK-Record/update.json", "panel update check must read the GitHub Pages update manifest");
-  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.1", "newer update manifest must show an update notice");
+  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.2", "newer update manifest must show an update notice");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：1.0.0"), "update notice must show the installed plugin version");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("面板菜单：下载页_Download Page"), "update notice must point users to the download-page menu action");
 
@@ -613,14 +706,65 @@ async function run() {
   numberInputs[0].dispatchEvent(new MockEvent("change"));
   assert.strictEqual(numberInputs[0].value, "1", "zero sampling interval must clamp back to the 1 second minimum");
   numberInputs[1].value = "0.1";
-  recordingButton.dispatchEvent(new MockEvent("click", { altKey: true, ctrlKey: true, shiftKey: true }));
-  await waitForCondition(() => addonCalls.clearRecording === 1, "Ctrl+Shift+Alt click must clear sequence frames after confirmation");
-  assert.strictEqual(writeFrameCount, 0, "clear shortcut must not start recording");
-  assert(confirmMessages[0].includes("确定要清空当前序列帧吗"), "clear shortcut must require a confirmation dialog");
 
-  recordingButton.dispatchEvent(new MockEvent("click", { altKey: true }));
-  await waitForCondition(() => writeFrameCount === 1, "start recording must write the initial frame");
-  assert.strictEqual(addonCalls.clearRecording, 1, "Alt-only recording click must not clear sequence frames");
+  const savedDocumentPath = photoshopMock.app.activeDocument.path;
+  photoshopMock.app.activeDocument.path = "";
+  recordingButton.dispatchEvent(new MockEvent("pointerdown"));
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await flushMicrotasks();
+  assert.strictEqual(writeFrameCount, 0, "unsaved Photoshop documents must not start recording");
+  assert.strictEqual(recordingButton.querySelector(".ok-record-record-text").textContent, "录制失败", "unsaved recording failure must update the recording button label");
+  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "开始录制失败", "unsaved recording must show a failure notice title");
+  assert(
+    document.querySelector(".ok-record-export-notice-body").textContent.includes("请先保存 Photoshop 文档为本地 PSD/PSB 文件"),
+    "unsaved recording failure notice must tell users to save the PSD/PSB first",
+  );
+  assert(alertMessages[0].includes("开始录制失败"), "unsaved recording failure must show a blocking alert title");
+  assert(alertMessages[0].includes("请先保存 Photoshop 文档为本地 PSD/PSB 文件"), "unsaved recording failure alert must include the saved-document guidance");
+  photoshopMock.app.activeDocument.path = savedDocumentPath;
+
+  entrypoints.panels.okRecordPanel.invokeMenu("clearRecordingTimeline");
+  await waitForCondition(() => addonCalls.clearRecording === 1, "panel flyout menu must clear sequence frames after confirmation");
+  assert.strictEqual(writeFrameCount, 0, "clear menu action must not start recording");
+  assert(confirmMessages[0].includes("确定要清空当前序列帧吗"), "clear menu action must require a confirmation dialog");
+
+  clearRecordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => addonCalls.clearRecording === 2, "visible clear button must clear sequence frames after confirmation");
+  assert.strictEqual(writeFrameCount, 0, "visible clear button must not start recording");
+  assert(confirmMessages[1].includes("确定要清空当前序列帧吗"), "visible clear button must require a confirmation dialog");
+
+  const manualProjectOutputDir = path.join(repoRoot, "tests", "out", "manual-project");
+  folderSelections.push({
+    isFolder: true,
+    name: "manual-project",
+    nativePath: manualProjectOutputDir,
+  });
+  chooseProjectOutputDirButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => folderSelections.length === 0, "manual OK-Record project folder picker must be consumed");
+
+  photoshopMock.app.activeDocument.saved = false;
+  recordingButton.dispatchEvent(new MockEvent("pointerdown", { altKey: true, ctrlKey: true, shiftKey: true }));
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => writeFrameCount === 1, "Ctrl+Shift+Alt recording click must behave as an ordinary recording click");
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 1 帧",
+    "initial recording must settle before pause checks",
+  );
+  assert.strictEqual(writeFrameOutputDirs[0], manualProjectOutputDir, "the current PSD must use the manually selected OK-Record project directory");
+  assert.strictEqual(addonCalls.clearRecording, 2, "Ctrl+Shift+Alt recording click must not clear sequence frames");
+  assert.strictEqual(chooseProjectOutputDirButton.disabled, true, "project save directory button must stay disabled while recording");
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 1 帧",
+    "recording button must settle into paused state",
+  );
+  assert.strictEqual(chooseProjectOutputDirButton.disabled, false, "project save directory button must be available while recording is paused");
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 1 帧",
+    "recording button must settle after resume",
+  );
+  assert.strictEqual(chooseProjectOutputDirButton.disabled, true, "project save directory button must disable again after resume");
   assert(idleListenerCalls.add >= 1, "recording with idle capture delay must register the idle listener");
   assert(idleListenerCalls.idleTimes.includes(0.1), "recording must configure the requested idle capture delay");
 
@@ -634,6 +778,112 @@ async function run() {
     idleListenerCalls.idleTimes[idleListenerCalls.idleTimes.length - 1],
     0,
     "manual capture failure while recording must reset the Photoshop idle timeout",
+  );
+  assert(alertMessages.some((message) => message.includes("手动采样失败") && message.includes("forced step write failure")), "manual step failure must show a blocking alert with the error details");
+
+  failStepWrite = false;
+  timers.length = 0;
+  photoshopMock.app.activeDocument.path = savedDocumentPath;
+  photoshopMock.app.activeDocument.id = 1;
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => writeFrameCount === 2, "recording can restart from an existing saved PSD with unsaved canvas edits");
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 2 帧",
+    "recording restart must refresh the recording button before close-event checks",
+  );
+  const documentCloseListener = actionListeners.find((entry) => Array.isArray(entry.events) && entry.events.includes("close"));
+  assert(documentCloseListener, "recording must subscribe to Photoshop document close events");
+  documentCloseListener.listener("close", {});
+  await flushMicrotasks();
+  assert.strictEqual(
+    recordingButton.querySelector(".ok-record-record-text").textContent,
+    "录制中 2 帧",
+    "closing an unrelated Photoshop document must not stop the active recording document",
+  );
+  photoshopMock.app.activeDocument.path = path.join(repoRoot, "tests", "out", "other.psd");
+  photoshopMock.app.activeDocument.id = 2;
+  openDocumentIds.add(2);
+  documentCloseListener.listener("close", {});
+  await flushMicrotasks();
+  assert.strictEqual(
+    recordingButton.querySelector(".ok-record-record-text").textContent,
+    "录制中 2 帧",
+    "closing an unrelated Photoshop document while another document is active must not stop the locked recording document",
+  );
+  openDocumentIds.delete(1);
+  documentCloseListener.listener("close", {});
+  await flushMicrotasks();
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-button-label").textContent === "开始录制",
+    "closing the PSD while recording must end the recording immediately",
+  );
+  while (timers.length > 0) {
+    const staleTimer = timers.shift();
+    staleTimer();
+    await flushMicrotasks();
+  }
+  assert.strictEqual(writeFrameCount, 2, "stale scheduled capture after document close must not write a new frame");
+
+  const newSavedDocumentPath = path.join(repoRoot, "tests", "out", "new.psd");
+  const newSavedDocumentDefaultOutputDir = path.join(repoRoot, "tests", "out", "OK-Record_new");
+  photoshopMock.app.activeDocument.path = newSavedDocumentPath;
+  photoshopMock.app.activeDocument.id = 3;
+  openDocumentIds.add(3);
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => writeFrameCount === 3, "a newly saved PSD can start recording after a previous PSD close");
+  assert.strictEqual(writeFrameOutputDirs[writeFrameOutputDirs.length - 1], newSavedDocumentDefaultOutputDir, "a newly saved PSD must use its own default OK-Record directory instead of the previous PSD manual directory");
+  photoshopMock.app.activeDocument.path = path.join(repoRoot, "tests", "out", "other.psd");
+  photoshopMock.app.activeDocument.id = 2;
+  const scheduledCapture = timers.shift();
+  assert(scheduledCapture, "recording restart must schedule the next timed capture");
+  scheduledCapture();
+  await flushMicrotasks();
+  assert.strictEqual(writeFrameCount, 3, "switching Photoshop documents while recording must not write into the locked timeline");
+  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "定时采样失败", "document-switch failure must show a capture failure notice");
+  assert(alertMessages.some((message) => message.includes("定时采样失败") && message.includes("当前 Photoshop 文档已经变化")), "timed recording failure must show a blocking alert with the document-change error");
+
+  photoshopMock.app.activeDocument.path = newSavedDocumentPath;
+  photoshopMock.app.activeDocument.id = 3;
+  await waitForCondition(() => exportButton.disabled === false, "export button must re-enable after the recording failure settles");
+  assert.strictEqual(exportButton.getAttribute("aria-disabled"), "false", "export button aria-disabled must clear before export");
+  assert((exportButton.eventListeners.get("click") || []).length > 0, "export button must retain its click listener");
+  exportButton.dispatchEvent(new MockEvent("click"));
+  await runNextTimer("export success must wait for the render-delay timer");
+  await waitForCondition(() => addonCalls.exportSession + addonCalls.exportSequence === 1, "export button must call a native exporter");
+  assert(alertMessages[alertMessages.length - 1].includes("导出完成"), "export success must show a blocking alert title");
+  assert(alertMessages[alertMessages.length - 1].includes("输出路径："), "export success alert must include the output path");
+
+  failExportSession = true;
+  exportButton.dispatchEvent(new MockEvent("click"));
+  await runNextTimer("export failure must wait for the render-delay timer");
+  await waitForCondition(() => addonCalls.exportSession + addonCalls.exportSequence === 2, "export button must call a native exporter again for failure coverage");
+  assert(alertMessages[alertMessages.length - 1].includes("导出失败"), "export failure must show a blocking alert title");
+  assert(alertMessages[alertMessages.length - 1].includes("forced export failure"), "export failure alert must include the native error details");
+
+  failExportSession = false;
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => writeFrameCount === 4, "recording can restart after export failure");
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 4 帧",
+    "recording after export failure must settle before paused directory selection",
+  );
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 4 帧",
+    "recording must pause before choosing a new project directory",
+  );
+  assert.strictEqual(chooseProjectOutputDirButton.disabled, false, "paused recording must allow choosing a new OK-Record project directory");
+  folderSelections.push({
+    isFolder: true,
+    name: "paused-project",
+    nativePath: path.join(repoRoot, "tests", "out", "paused-project"),
+  });
+  chooseProjectOutputDirButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => folderSelections.length === 0, "paused directory selection must consume the folder picker");
+  assert.strictEqual(
+    recordingButton.querySelector(".ok-record-button-label").textContent,
+    "开始录制",
+    "choosing a project directory while paused must end the paused recording state",
   );
 
   entrypoints.panels.okRecordPanel.show();

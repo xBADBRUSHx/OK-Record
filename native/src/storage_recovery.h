@@ -127,6 +127,9 @@ void RebuildManifestFromCommittedFrames(
 RecordingSessionScanSummary ScanRecordingSessions(const fs::path& recordingsRoot);
 FrameMetadata ReadFrameMetadata(const std::string& metadataJson);
 FrameStorageSpec GetFrameStorageSpecFromMetadata(const FrameMetadata& metadata);
+bool IsEightBitRgbSourceFormat(const std::string& pixelFormat, uint32_t components, uint32_t componentSize);
+bool IsEightBitRgbSourceMetadata(const FrameMetadata& metadata);
+bool IsTimelineFrameFormatCompatible(const FrameMetadata& firstMetadata, const FrameMetadata& metadata);
 uint64_t ExpectedFrameByteLength(const FrameMetadata& metadata);
 
 }  // namespace ok_record

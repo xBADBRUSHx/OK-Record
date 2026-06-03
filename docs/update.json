@@ -1,8 +1,8 @@
 {
   "schema": "ok-record.update-manifest.v1",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "releaseDate": "2026-06-03",
-  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1",
-  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.1/OK-Record_with-ffmpeg.ccx",
-  "summary": "v1.0.1 修复部分 Photoshop 2026 环境中 RGB 8 位文档无法录制的问题。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
+  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2",
+  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.2/OK-Record_with-ffmpeg.ccx",
+  "summary": "v1.0.2 修复 RGB/RGBA 混合时间线无法继续录制的问题，新增面板菜单清空序列帧，并要求自动录制绑定本地 PSD/PSB 文档。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
 }

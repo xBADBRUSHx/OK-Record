@@ -144,8 +144,10 @@ function testButtonHelpers() {
   assert.strictEqual(button.querySelector(".ok-record-button-label").style.lineHeight, "22px");
 
   let controlRuns = 0;
-  const control = panelDom.createControlButton("开始录制", () => {
+  let lastControlEvent = null;
+  const control = panelDom.createControlButton("开始录制", (event) => {
     controlRuns += 1;
+    lastControlEvent = event;
   }, "ok-record-record-status-button");
   assert.strictEqual(control.tagName, "DIV");
   assert(hasClass(control, "ok-record-control-button"));
@@ -159,6 +161,19 @@ function testButtonHelpers() {
   control.dispatchEvent(spaceEvent);
   assert.strictEqual(controlRuns, 3);
   assert.strictEqual(spaceEvent.defaultPrevented, true);
+  control.dispatchEvent(new MockEvent("pointerdown", { altKey: true, ctrlKey: true, shiftKey: true }));
+  control.dispatchEvent(new MockEvent("click"));
+  assert.strictEqual(controlRuns, 4);
+  assert.strictEqual(lastControlEvent.type, "click");
+  assert.strictEqual(lastControlEvent.altKey, true);
+  assert.strictEqual(lastControlEvent.ctrlKey, true);
+  assert.strictEqual(lastControlEvent.shiftKey, true);
+  control.dispatchEvent(new MockEvent("pointerdown"));
+  control.dispatchEvent(new MockEvent("click"));
+  assert.strictEqual(controlRuns, 5);
+  assert.strictEqual(lastControlEvent.altKey, false);
+  assert.strictEqual(lastControlEvent.ctrlKey, false);
+  assert.strictEqual(lastControlEvent.shiftKey, false);
 
   panelDom.setControlDisabled(control, true);
   assert.strictEqual(control.disabled, true);
@@ -166,7 +181,7 @@ function testButtonHelpers() {
   assert.strictEqual(control.getAttribute("tabindex"), "-1");
   assert(hasClass(control, "ok-record-control-disabled"));
   control.dispatchEvent(new MockEvent("click"));
-  assert.strictEqual(controlRuns, 3, "disabled control button must not run click handlers");
+  assert.strictEqual(controlRuns, 5, "disabled control button must not run click handlers");
 
   panelDom.setControlDisabled(control, false);
   assert.strictEqual(control.disabled, false);

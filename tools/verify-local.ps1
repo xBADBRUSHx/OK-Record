@@ -85,6 +85,10 @@ try {
         node "tests\path-policy.test.js"
     }
 
+    Invoke-Step "Domain: recording context" {
+        node "tests\recording-context.test.js"
+    }
+
     Invoke-Step "Domain: recorder state" {
         node "tests\recorder-domain.test.js"
     }

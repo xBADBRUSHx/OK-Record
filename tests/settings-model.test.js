@@ -45,7 +45,7 @@ assert.deepStrictEqual(defaults, {
   idleCaptureDelaySeconds: contract.scheduler.defaultIdleCaptureDelaySeconds,
   idleCaptureMaxWaitSeconds: contract.scheduler.defaultIdleCaptureMaxWaitSeconds,
   frameOutputDir: "",
-  stepOutputDir: "",
+  frameOutputDocumentKey: "",
   exportSourceDir: "",
   captureOnlyWhenChanged: true,
   exportDurationSeconds: contract.export.defaultDurationSeconds,
@@ -60,7 +60,7 @@ const normalized = settingsModel.normalizePanelSettings({
   idleCaptureDelaySeconds: -10,
   idleCaptureMaxWaitSeconds: 999999,
   frameOutputDir: "E:\\frames",
-  stepOutputDir: 123,
+  frameOutputDocumentKey: "e:\\doc\\image.psd",
   exportSourceDir: "E:\\old",
   captureOnlyWhenChanged: false,
   exportDurationSeconds: 0,
@@ -73,7 +73,7 @@ assert.strictEqual(normalized.intervalMinutes, settingsModel.MAX_INTERVAL_MINUTE
 assert.strictEqual(normalized.idleCaptureDelaySeconds, contract.scheduler.minIdleCaptureDelaySeconds);
 assert.strictEqual(normalized.idleCaptureMaxWaitSeconds, contract.scheduler.maxIdleCaptureMaxWaitSeconds);
 assert.strictEqual(normalized.frameOutputDir, "E:\\frames");
-assert.strictEqual(normalized.stepOutputDir, "");
+assert.strictEqual(normalized.frameOutputDocumentKey, "e:\\doc\\image.psd");
 assert.strictEqual(normalized.exportSourceDir, "E:\\old");
 assert.strictEqual(normalized.captureOnlyWhenChanged, true);
 assert.strictEqual(normalized.exportDurationSeconds, contract.export.minDurationSeconds);
@@ -89,7 +89,7 @@ const parsed = settingsModel.parsePersistedPanelSettings(JSON.stringify({
     idleCaptureDelaySeconds: "2",
     idleCaptureMaxWaitSeconds: "20",
     frameOutputDir: "D:\\recordings",
-    stepOutputDir: "D:\\steps",
+    frameOutputDocumentKey: "d:\\art\\mock.psd",
     exportSourceDir: "D:\\source",
     captureOnlyWhenChanged: false,
     exportDurationSeconds: "60",
@@ -102,6 +102,8 @@ const parsed = settingsModel.parsePersistedPanelSettings(JSON.stringify({
 assert.strictEqual(parsed.intervalMinutes, 5);
 assert.strictEqual(parsed.idleCaptureDelaySeconds, 2);
 assert.strictEqual(parsed.idleCaptureMaxWaitSeconds, 20);
+assert.strictEqual(parsed.frameOutputDir, "D:\\recordings");
+assert.strictEqual(parsed.frameOutputDocumentKey, "d:\\art\\mock.psd");
 assert.strictEqual(parsed.captureOnlyWhenChanged, true);
 assert.strictEqual(parsed.exportOutputFps, contract.export.defaultOutputFps);
 assert.strictEqual(parsed.exportMaxWidth, contract.export.defaultMaxWidth);
@@ -118,7 +120,7 @@ const snapshot = settingsModel.createPersistedPanelSettings({
   idleCaptureDelaySeconds: 2,
   idleCaptureMaxWaitSeconds: 20,
   frameOutputDir: "D:\\recordings",
-  stepOutputDir: "D:\\steps",
+  frameOutputDocumentKey: "d:\\art\\mock.psd",
   exportSourceDir: "D:\\source",
   captureOnlyWhenChanged: false,
   exportDurationSeconds: 60,
@@ -134,7 +136,7 @@ assert.deepStrictEqual(snapshot.settings, {
   idleCaptureDelaySeconds: 2,
   idleCaptureMaxWaitSeconds: 20,
   frameOutputDir: "D:\\recordings",
-  stepOutputDir: "D:\\steps",
+  frameOutputDocumentKey: "d:\\art\\mock.psd",
   exportSourceDir: "D:\\source",
   captureOnlyWhenChanged: true,
   exportDurationSeconds: 60,

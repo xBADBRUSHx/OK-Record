@@ -8,7 +8,7 @@ const contract = require(path.join(repoRoot, "shared", "recorder-contract.json")
 const pathPolicy = require(path.join(repoRoot, "uxp", "domain", "path-policy.js"));
 
 assert.strictEqual(pathPolicy.RECORDINGS_ROOT_DIR_NAME, contract.sessionLayout.rootDirName);
-assert.strictEqual(pathPolicy.DOCUMENT_PROJECT_DIR_SUFFIX, contract.projectLayout.documentProjectDirSuffix);
+assert.strictEqual(pathPolicy.DOCUMENT_PROJECT_DIR_PREFIX, contract.projectLayout.documentProjectDirPrefix);
 assert.strictEqual(pathPolicy.DEFAULT_STEP_OUTPUT_DIR_NAME, contract.stepFrame.defaultDirName);
 
 assert.strictEqual(pathPolicy.isLocalDocumentNativePath("C:\\Art\\file.psd"), true);
@@ -31,60 +31,40 @@ assert.strictEqual(
 
 assert.strictEqual(
   pathPolicy.resolveRecorderOutputDir({
-    manualFrameOutputDir: "D:\\Manual",
     activeDocumentPath: "E:\\Doc\\image.psd",
-    pluginDataDir: "C:\\PluginData",
   }),
-  "D:\\Manual",
-  "manual sequence frame folder has highest priority",
-);
-
-assert.strictEqual(
-  pathPolicy.resolveRecorderOutputDir({
-    activeDocumentPath: "E:\\Doc\\image.psd",
-    pluginDataDir: "C:\\PluginData",
-  }),
-  "E:\\Doc\\image-OK-Record",
-  "saved Photoshop document project folder is the second priority",
+  "E:\\Doc\\OK-Record_image",
+  "saved Photoshop document project folder is the path-policy recording root",
 );
 
 assert.strictEqual(
   pathPolicy.resolveRecorderOutputDir({
     activeDocumentPath: "",
-    pluginDataDir: "C:\\PluginData",
   }),
-  "C:\\PluginData",
-  "plugin data folder is the final fallback",
+  "",
+  "missing document context must not fall back to plugin data for recording",
 );
 
 assert.strictEqual(
   pathPolicy.resolveRecorderOutputDir({
     activeDocumentPath: "cloud://document.psd",
-    pluginDataDir: "C:\\PluginData",
   }),
-  "C:\\PluginData",
-  "cloud or unsaved Photoshop document identifiers should fall back to plugin data",
+  "",
+  "cloud or unsaved Photoshop document identifiers must not resolve an automatic recording root",
 );
 
 assert.strictEqual(
   pathPolicy.resolveRecordingsRootDir({
     activeDocumentPath: "E:\\Doc\\image.psd",
-    pluginDataDir: "C:\\PluginData",
   }),
-  "E:\\Doc\\image-OK-Record\\延时录制_Recordings",
+  "E:\\Doc\\OK-Record_image\\延时录制_Recordings",
   "recordings root should use the bilingual root directory",
 );
 
 assert.strictEqual(
   pathPolicy.getLocalDocumentProjectRootNativePath("E:\\Doc\\character.final.psd"),
-  "E:\\Doc\\character.final-OK-Record",
+  "E:\\Doc\\OK-Record_character.final",
   "document project root should use the PSD basename without the final extension",
-);
-
-assert.strictEqual(
-  pathPolicy.resolveStepOutputDir({ manualStepOutputDir: "D:\\Steps", recorderOutputDir: "E:\\Doc" }),
-  "D:\\Steps\\步骤图_Steps",
-  "manual step image folder should create the stable Steps child under the selected folder",
 );
 
 assert.strictEqual(

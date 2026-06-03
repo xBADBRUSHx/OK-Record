@@ -388,6 +388,41 @@ function createButton(labelText, onClick, className = "") {
   return button;
 }
 
+function getActivationModifiers(event) {
+  return {
+    altKey: Boolean(event && event.altKey),
+    ctrlKey: Boolean(event && event.ctrlKey),
+    shiftKey: Boolean(event && event.shiftKey),
+    metaKey: Boolean(event && event.metaKey),
+  };
+}
+
+function hasActivationModifier(modifiers) {
+  return Boolean(modifiers && (modifiers.altKey || modifiers.ctrlKey || modifiers.shiftKey || modifiers.metaKey));
+}
+
+function createNormalizedActivationEvent(event, pointerModifiers) {
+  if (!event || event.type !== "click" || !hasActivationModifier(pointerModifiers)) {
+    return event;
+  }
+  const eventModifiers = getActivationModifiers(event);
+  return {
+    type: event.type,
+    target: event.target,
+    currentTarget: event.currentTarget,
+    altKey: eventModifiers.altKey || pointerModifiers.altKey,
+    ctrlKey: eventModifiers.ctrlKey || pointerModifiers.ctrlKey,
+    shiftKey: eventModifiers.shiftKey || pointerModifiers.shiftKey,
+    metaKey: eventModifiers.metaKey || pointerModifiers.metaKey,
+    originalEvent: event,
+    preventDefault() {
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+    },
+  };
+}
+
 function createControlButton(labelText, onClick, className = "") {
   const control = document.createElement("div");
   control.className = ["ok-record-control-button", className].filter(Boolean).join(" ");
@@ -395,12 +430,16 @@ function createControlButton(labelText, onClick, className = "") {
   control.setAttribute("tabindex", "0");
   control.disabled = false;
   setButtonLabel(control, labelText);
+  let pointerActivationModifiers = null;
 
   const run = (event) => {
     if (control.disabled || control.getAttribute("aria-disabled") === "true") {
+      pointerActivationModifiers = null;
       return;
     }
-    const result = onClick(event);
+    const normalizedEvent = createNormalizedActivationEvent(event, pointerActivationModifiers);
+    pointerActivationModifiers = null;
+    const result = onClick(normalizedEvent);
     if (result && typeof result.catch === "function") {
       result.catch((error) => {
         console.log("[OK-Record] control action failed:", error);
@@ -408,6 +447,15 @@ function createControlButton(labelText, onClick, className = "") {
     }
   };
 
+  control.addEventListener("pointerdown", (event) => {
+    pointerActivationModifiers = getActivationModifiers(event);
+  });
+  control.addEventListener("mousedown", (event) => {
+    const mouseModifiers = getActivationModifiers(event);
+    if (!pointerActivationModifiers || hasActivationModifier(mouseModifiers)) {
+      pointerActivationModifiers = mouseModifiers;
+    }
+  });
   control.addEventListener("click", run);
   control.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") {
@@ -444,6 +492,7 @@ function setButtonLabel(button, labelText) {
     label.className = "ok-record-button-label";
     button.appendChild(label);
   }
+  clearChildren(label);
   label.textContent = labelText;
 }
 

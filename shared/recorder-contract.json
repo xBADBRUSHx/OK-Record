@@ -19,7 +19,7 @@
     "logsDirName": "logs"
   },
   "projectLayout": {
-    "documentProjectDirSuffix": "-OK-Record"
+    "documentProjectDirPrefix": "OK-Record_"
   },
   "frame": {
     "schema": "ok-record.frame.v1",
@@ -156,7 +156,7 @@
     "schema": "ok-record.panel-settings.v1",
     "filename": "panel-settings.json",
     "frameOutputDirField": "frameOutputDir",
-    "stepOutputDirField": "stepOutputDir",
+    "frameOutputDocumentKeyField": "frameOutputDocumentKey",
     "exportSourceDirField": "exportSourceDir"
   },
   "export": {

@@ -2,7 +2,7 @@
 
 const RECORDINGS_ROOT_DIR_NAME = "延时录制_Recordings";
 const DEFAULT_STEP_OUTPUT_DIR_NAME = "步骤图_Steps";
-const DOCUMENT_PROJECT_DIR_SUFFIX = "-OK-Record";
+const DOCUMENT_PROJECT_DIR_PREFIX = "OK-Record_";
 
 function normalizeNativePath(value) {
   return String(value || "").trim();
@@ -58,7 +58,7 @@ function getLocalDocumentProjectRootNativePath(documentPath) {
   if (!documentDir || !documentName) {
     return "";
   }
-  return joinNativePath(documentDir, `${documentName}${DOCUMENT_PROJECT_DIR_SUFFIX}`);
+  return joinNativePath(documentDir, `${DOCUMENT_PROJECT_DIR_PREFIX}${documentName}`);
 }
 
 function getPathSeparator(basePath) {
@@ -77,35 +77,27 @@ function joinNativePath(basePath, childName) {
   return `${base.replace(/[\\/]+$/, "")}${getPathSeparator(base)}${child.replace(/^[\\/]+/, "")}`;
 }
 
-function resolveRecorderOutputDir({ manualFrameOutputDir = "", activeDocumentPath = "", pluginDataDir = "" } = {}) {
-  const manualDir = normalizeNativePath(manualFrameOutputDir);
-  if (manualDir) {
-    return manualDir;
-  }
-
+function resolveRecorderOutputDir({ activeDocumentPath = "" } = {}) {
   const documentProjectRoot = getLocalDocumentProjectRootNativePath(activeDocumentPath);
   if (documentProjectRoot) {
     return documentProjectRoot;
   }
 
-  return normalizeNativePath(pluginDataDir);
+  return "";
 }
 
 function resolveRecordingsRootDir(options = {}) {
-  return joinNativePath(resolveRecorderOutputDir(options), RECORDINGS_ROOT_DIR_NAME);
+  const outputDir = resolveRecorderOutputDir(options);
+  return outputDir ? joinNativePath(outputDir, RECORDINGS_ROOT_DIR_NAME) : "";
 }
 
-function resolveStepOutputDir({ manualStepOutputDir = "", recorderOutputDir = "" } = {}) {
-  const manualDir = normalizeNativePath(manualStepOutputDir);
-  if (manualDir) {
-    return joinNativePath(manualDir, DEFAULT_STEP_OUTPUT_DIR_NAME);
-  }
+function resolveStepOutputDir({ recorderOutputDir = "" } = {}) {
   return joinNativePath(recorderOutputDir, DEFAULT_STEP_OUTPUT_DIR_NAME);
 }
 
 module.exports = {
   DEFAULT_STEP_OUTPUT_DIR_NAME,
-  DOCUMENT_PROJECT_DIR_SUFFIX,
+  DOCUMENT_PROJECT_DIR_PREFIX,
   RECORDINGS_ROOT_DIR_NAME,
   getLocalDocumentProjectRootNativePath,
   getLocalDocumentParentDirNativePath,

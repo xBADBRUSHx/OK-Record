@@ -746,13 +746,7 @@ RecordingSessionScanSummary ScanRecordingSessions(const fs::path& recordingsRoot
         fs::path inconsistentMetadataPath;
         for (const CommittedFrameRecord& frame : frames) {
             const FrameMetadata metadata = ReadFrameMetadata(frame.metadataJson);
-            if (metadata.components != firstMetadata.components ||
-                metadata.componentSize != firstMetadata.componentSize ||
-                metadata.pixelFormat != firstMetadata.pixelFormat ||
-                metadata.frameStorageFormat != firstMetadata.frameStorageFormat ||
-                metadata.frameQualityPreset != firstMetadata.frameQualityPreset ||
-                metadata.jpegQuality != firstMetadata.jpegQuality ||
-                metadata.frameExtension != firstMetadata.frameExtension ||
+            if (!IsTimelineFrameFormatCompatible(firstMetadata, metadata) ||
                 NormalizeExtension(frame.framePath) != metadata.frameExtension) {
                 exportFrameMetadataConsistent = false;
                 inconsistentFrameName = frame.frameName;
@@ -847,6 +841,34 @@ FrameMetadata ReadFrameMetadata(const std::string& metadataJson) {
 
 FrameStorageSpec GetFrameStorageSpecFromMetadata(const FrameMetadata& metadata) {
     return NormalizeFrameStorageSpec({metadata.frameStorageFormat, metadata.frameExtension});
+}
+
+bool IsEightBitRgbSourceFormat(const std::string& pixelFormat, uint32_t components, uint32_t componentSize) {
+    return componentSize == 8 &&
+        ((pixelFormat == "RGB" && components == 3) || (pixelFormat == "RGBA" && components == 4));
+}
+
+bool IsEightBitRgbSourceMetadata(const FrameMetadata& metadata) {
+    return IsEightBitRgbSourceFormat(metadata.pixelFormat, metadata.components, metadata.componentSize);
+}
+
+bool IsTimelineFrameFormatCompatible(const FrameMetadata& firstMetadata, const FrameMetadata& metadata) {
+    if (metadata.frameStorageFormat != firstMetadata.frameStorageFormat ||
+        metadata.frameQualityPreset != firstMetadata.frameQualityPreset ||
+        metadata.jpegQuality != firstMetadata.jpegQuality ||
+        metadata.frameExtension != firstMetadata.frameExtension) {
+        return false;
+    }
+    if (metadata.components == firstMetadata.components &&
+        metadata.componentSize == firstMetadata.componentSize &&
+        metadata.pixelFormat == firstMetadata.pixelFormat) {
+        return true;
+    }
+
+    const FrameStorageSpec storageSpec = GetFrameStorageSpecFromMetadata(firstMetadata);
+    return (IsJpegFrameStorage(storageSpec) || IsPngFrameStorage(storageSpec)) &&
+        IsEightBitRgbSourceMetadata(firstMetadata) &&
+        IsEightBitRgbSourceMetadata(metadata);
 }
 
 uint64_t ExpectedFrameByteLength(const FrameMetadata& metadata) {

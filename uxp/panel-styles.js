@@ -640,6 +640,29 @@ module.exports = `
     line-height: 18px;
   }
 
+  .ok-record-clear-recording-row {
+    margin-top: 0;
+  }
+
+  .ok-record-danger-button {
+    border-color: rgba(255, 102, 102, 0.72);
+    background: rgba(255, 90, 90, 0.14);
+    color: rgba(255, 225, 225, 0.96);
+    font-weight: 700;
+  }
+
+  .ok-record-danger-button:hover,
+  .ok-record-danger-button:focus {
+    border-color: rgba(255, 124, 124, 0.92);
+    background: rgba(255, 90, 90, 0.20);
+    color: #ffffff;
+  }
+
+  .ok-record-danger-button:active {
+    border-color: rgba(255, 150, 150, 0.92);
+    background: rgba(255, 90, 90, 0.26);
+  }
+
   .ok-record-compact-button {
     flex: 0 0 76px;
     min-width: 64px;
@@ -758,6 +781,10 @@ module.exports = `
   }
 
   .ok-record-record-indicator-active {
+    background: #ff5a5a;
+  }
+
+  .ok-record-record-indicator-error {
     background: #ff5a5a;
   }
 

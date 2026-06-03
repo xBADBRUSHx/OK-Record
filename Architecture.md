@@ -1,6 +1,6 @@
 # Architecture
 
-Last Updated: 2026-06-02
+Last Updated: 2026-06-03
 
 `Architecture.md` is the level-1 architecture contract map and the single architecture authority for OK Record. Scoped docs may own build, packaging, or platform procedures, but they must not duplicate architecture truth.
 
@@ -35,7 +35,7 @@ WHY: The product value is clean artwork-state snapshots that can survive interru
 
 Status: implemented
 
-Contract: UXP owns Photoshop API calls, panel lifecycle, DOM events, and status display. Pure JS domain modules own recorder state transitions, export profile math, path policy, settings parsing, and painting timer rules. Native addon calls route through a single service bridge before entering UI workflow code.
+Contract: UXP owns Photoshop API calls, panel lifecycle, DOM events, and status display. Critical recording/export failures and export completion keep the bottom selectable detail notice and also show a native blocking alert so users cannot miss the result. Pure JS domain modules own recorder state transitions, export profile math, path policy, settings parsing, and painting timer rules. Native addon calls route through a single service bridge before entering UI workflow code.
 
 Owners: `uxp/main.js`, `uxp/status-messages.js`, `uxp/panel-view.js`, `uxp/panel-dom.js`, `uxp/panel-styles.js`, `uxp/domain/`, `uxp/services/native-bridge.js`.
 
@@ -53,21 +53,25 @@ Code anchors:
 - `uxp/recorder-scheduler.js`
 - `uxp/domain/export-profile.js`
 - `uxp/domain/path-policy.js`
+- `uxp/domain/recording-context.js`
 - `uxp/domain/settings-model.js`
 - `uxp/domain/painting-timer.js`
 - `uxp/domain/recorder-state.js`
 - `uxp/services/native-bridge.js`
 
-Verification anchors: JS syntax checks, UXP panel smoke, focused domain/status-message/native-bridge/panel-styles/panel-dom/panel-view tests, shared contract test. The broad shared contract test is intentionally reserved for cross-layer, packaging, documentation, native protocol, and retired-surface sentinels.
+Verification anchors: JS syntax checks, UXP panel smoke, focused domain/status-message/native-bridge/panel-styles/panel-dom/panel-view/recording-context tests, shared contract test. The broad shared contract test is intentionally reserved for cross-layer, packaging, documentation, native protocol, and retired-surface sentinels.
 
-Forbidden paths: durable storage truth in UI code, domain rules coupled directly to DOM nodes, Photoshop calls inside pure domain modules.
+Forbidden paths: durable storage truth in UI code, domain rules coupled directly to DOM nodes, Photoshop calls inside pure domain modules, plugin-data fallback for automatic recording, using `activeDocument.saved` as the "has ever been saved locally" gate, reintroducing separate sequence-frame and step-image save roots, applying a manual OK-Record project folder globally across unrelated PSD/PSB documents, treating every Photoshop `close` event as the active recording document closing.
 
 Predicted wrong defaults: Splitting into generic managers before there is a real domain boundary.
+
+WHY: The OK-Record project folder is the user-visible continuity boundary, but the default directory must follow the current saved PSD/PSB to prevent a new document from silently writing into the previous document's timeline. A manual project-folder selection is scoped to the current document identity; artists who use incremental PSD/PSB saves can still continue one project by explicitly choosing that same OK-Record folder in each saved variant.
 
 Implemented owner split:
 
 - `uxp/domain/export-profile.js` owns export timing and profile normalization.
-- `uxp/domain/path-policy.js` owns manual project-root priority, saved-PSD project roots, and bilingual recording/step directory names.
+- `uxp/domain/path-policy.js` owns native path helpers, saved-PSD project roots, and bilingual recording/step directory names.
+- `uxp/domain/recording-context.js` owns local PSD/PSB document identity, the OK-Record project output directory, document-scoped manual project-directory overrides, recording output context, and active-session/current-document matching. It intentionally ignores `activeDocument.saved` because that flag means "saved since last edit", not "has a local file path". Default recording roots are derived from the current saved PSD/PSB path. A manual project root applies only when the persisted `frameOutputDocumentKey` matches the current document key, so incremental PSD/PSB saves can continue one project only after the user explicitly selects that project folder for the current document; active recording writes still lock to the currently opened document identity to prevent accidental writes after a document switch. Document-close handling validates the locked Photoshop document id before ending a recording, so closing an unrelated document cannot stop the active timeline.
 - `uxp/domain/settings-model.js` owns persisted panel settings defaults and normalization.
 - `uxp/domain/painting-timer.js` owns painting timer state transitions and restore rules.
 - `uxp/domain/recorder-state.js` owns recorder state transitions and active/busy predicates.
@@ -188,6 +192,7 @@ Focused domain tests:
 
 - `tests/export-profile.test.js`
 - `tests/path-policy.test.js`
+- `tests/recording-context.test.js`
 - `tests/settings-model.test.js`
 - `tests/painting-timer.test.js`
 - `tests/recorder-domain.test.js`

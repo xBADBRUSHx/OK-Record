@@ -389,6 +389,7 @@ $pluginPayload = @(
     "domain\export-profile.js",
     "domain\painting-timer.js",
     "domain\path-policy.js",
+    "domain\recording-context.js",
     "domain\recorder-state.js",
     "domain\settings-model.js",
     "services\native-bridge.js",

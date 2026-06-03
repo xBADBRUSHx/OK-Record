@@ -25,7 +25,7 @@ function createInitialRecorderState(defaults = {}) {
     frameCount: 0,
     lastCaptureAt: "",
     frameOutputDir: "",
-    stepOutputDir: "",
+    frameOutputDocumentKey: "",
     stepFrameCount: 0,
     lastStepCaptureAt: "",
     lastStepFramePath: "",

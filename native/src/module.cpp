@@ -101,16 +101,34 @@ struct ImageDimensions {
 ImageDimensions ReadEncodedImageDimensions(const fs::path& imagePath);
 
 bool IsEightBitRgbSource(const std::string& pixelFormat, uint32_t components, uint32_t componentSize) {
-    return componentSize == 8 &&
-        ((pixelFormat == "RGB" && components == 3) || (pixelFormat == "RGBA" && components == 4));
+    return IsEightBitRgbSourceFormat(pixelFormat, components, componentSize);
 }
 
 bool IsEightBitRgbSource(const FrameMetadata& metadata) {
-    return IsEightBitRgbSource(metadata.pixelFormat, metadata.components, metadata.componentSize);
+    return IsEightBitRgbSourceMetadata(metadata);
 }
 
 bool IsEightBitRgbSource(const FrameWriteRequest& request) {
     return IsEightBitRgbSource(request.pixelFormat, request.components, request.componentSize);
+}
+
+bool IsFrameWriteFormatCompatible(const FrameMetadata& firstMetadata, const FrameWriteRequest& request) {
+    if (firstMetadata.frameStorageFormat != request.frameStorageFormat ||
+        firstMetadata.frameExtension != request.frameExtension ||
+        firstMetadata.frameQualityPreset != request.frameQualityPreset ||
+        firstMetadata.jpegQuality != request.jpegQuality) {
+        return false;
+    }
+    if (firstMetadata.components == request.components &&
+        firstMetadata.componentSize == request.componentSize &&
+        firstMetadata.pixelFormat == request.pixelFormat) {
+        return true;
+    }
+
+    const FrameStorageSpec storageSpec = GetFrameStorageSpecFromMetadata(firstMetadata);
+    return (IsJpegFrameStorage(storageSpec) || IsPngFrameStorage(storageSpec)) &&
+        IsEightBitRgbSource(firstMetadata) &&
+        IsEightBitRgbSource(request);
 }
 
 fs::path GetRecordingsRootPath(const std::string& outputDir) {
@@ -791,13 +809,7 @@ ExportFrameSet BuildExportFrameSet(const ExportRequest& request) {
         ++expectedFrameIndex;
 
         FrameMetadata metadata = ReadFrameMetadata(frame.metadataJson);
-        if (metadata.components != firstMetadata.components ||
-            metadata.componentSize != firstMetadata.componentSize ||
-            metadata.pixelFormat != firstMetadata.pixelFormat ||
-            metadata.frameStorageFormat != firstMetadata.frameStorageFormat ||
-            metadata.frameQualityPreset != firstMetadata.frameQualityPreset ||
-            metadata.jpegQuality != firstMetadata.jpegQuality ||
-            metadata.frameExtension != firstMetadata.frameExtension) {
+        if (!IsTimelineFrameFormatCompatible(firstMetadata, metadata)) {
             throw std::runtime_error("Export frame metadata is inconsistent: " + PathToUtf8(frame.metadataPath));
         }
         AddExportAspectGroupFrame(aspectGroups, metadata.width, metadata.height);
@@ -1823,13 +1835,7 @@ addon_value WriteFrame(addon_env env, addon_callback_info info) {
         const FrameStorageSpec storageSpec = SelectFrameStorageSpec(existingFrames, request);
         if (!existingFrames.empty()) {
             const FrameMetadata firstMetadata = ReadFrameMetadata(existingFrames.front().metadataJson);
-            if (firstMetadata.components != request.components ||
-                firstMetadata.componentSize != request.componentSize ||
-                firstMetadata.pixelFormat != request.pixelFormat ||
-                firstMetadata.frameStorageFormat != request.frameStorageFormat ||
-                firstMetadata.frameExtension != request.frameExtension ||
-                firstMetadata.frameQualityPreset != request.frameQualityPreset ||
-                firstMetadata.jpegQuality != request.jpegQuality) {
+            if (!IsFrameWriteFormatCompatible(firstMetadata, request)) {
                 throw std::runtime_error(
                     "write_frame metadata is incompatible with existing timeline. expected " +
                     FormatFrameFormat(firstMetadata) + ", got " + FormatFrameFormat(request));

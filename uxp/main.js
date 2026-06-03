@@ -4,6 +4,7 @@ const recorderScheduler = require("./recorder-scheduler");
 const exportProfileModel = require("./domain/export-profile");
 const paintingTimerModel = require("./domain/painting-timer");
 const pathPolicy = require("./domain/path-policy");
+const recordingContext = require("./domain/recording-context");
 const recorderDomain = require("./domain/recorder-state");
 const settingsModel = require("./domain/settings-model");
 const nativeBridge = require("./services/native-bridge");
@@ -86,14 +87,18 @@ const LOCAL_DOCUMENTATION_DIR_NAME = "docs";
 const LOCAL_DOCUMENTATION_FILENAME = "index.html";
 const DOCUMENTATION_PANEL_MENU_ID = "openDocumentation";
 const UPDATE_PANEL_MENU_ID = "openUpdateDownloadPage";
+const CLEAR_RECORDING_PANEL_MENU_ID = "clearRecordingTimeline";
 const UPDATE_MANIFEST_SCHEMA = "ok-record.update-manifest.v1";
 const UPDATE_MANIFEST_URL = "https://xbadbrushx.github.io/OK-Record/update.json";
 const UPDATE_RELEASES_URL_PREFIX = "https://github.com/xBADBRUSHx/OK-Record/releases/";
-const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.1";
+const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2";
 const RECORDING_TIMELINE_ID = "Timeline";
 const STEP_FRAME_FILENAME_PREFIX = "step_";
 const STEP_FRAME_INDEX_DIGITS = 3;
 const DEFAULT_CAPTURE_ONLY_WHEN_CHANGED = settingsModel.DEFAULT_CAPTURE_ONLY_WHEN_CHANGED;
+const UNSAVED_DOCUMENT_RECORDING_MESSAGE = recordingContext.UNSAVED_DOCUMENT_RECORDING_MESSAGE;
+const DOCUMENT_CONTEXT_CHANGED_MESSAGE = recordingContext.DOCUMENT_CONTEXT_CHANGED_MESSAGE;
+const DOCUMENT_CLOSE_EVENT = "close";
 const DOCUMENT_CHANGE_EVENTS = Object.freeze([
   "paint",
   "draw",
@@ -129,7 +134,7 @@ const DOCUMENT_CHANGE_EVENTS = Object.freeze([
   "undoEvent",
   "revert",
   "open",
-  "close",
+  DOCUMENT_CLOSE_EVENT,
 ]);
 const RECORDER_STATES = recorderDomain.RECORDER_STATES;
 const EXPORT_STATUSES = recorderDomain.EXPORT_STATUSES;
@@ -142,10 +147,10 @@ let exportNoticeCloseButtonNode = null;
 let intervalSecondsInputNode = null;
 let idleCaptureDelaySecondsInputNode = null;
 let idleCaptureMaxWaitSecondsInputNode = null;
-let chooseFrameOutputDirButtonNode = null;
+let chooseProjectOutputDirButtonNode = null;
 let openFrameOutputDirButtonNode = null;
-let chooseStepOutputDirButtonNode = null;
 let openStepOutputDirButtonNode = null;
+let clearRecordingTimelineButtonNode = null;
 let startRecordingButtonNode = null;
 let captureNowButtonNode = null;
 let chooseExportSequenceDirButtonNode = null;
@@ -180,6 +185,7 @@ let documentChangeGeneration = 0;
 let stepCaptureActive = false;
 let updateCheckPromise = null;
 let latestAvailableUpdate = null;
+let activeRecordingContext = null;
 
 uxp.entrypoints.setup({
   panels: {
@@ -187,6 +193,7 @@ uxp.entrypoints.setup({
       menuItems: [
         { id: DOCUMENTATION_PANEL_MENU_ID, label: "文档_Documentation" },
         { id: UPDATE_PANEL_MENU_ID, label: "下载页_Download Page" },
+        { id: CLEAR_RECORDING_PANEL_MENU_ID, label: "清空序列帧_Clear Frames" },
       ],
       show() {
         showPanel();
@@ -204,6 +211,11 @@ uxp.entrypoints.setup({
             console.log("[OK-Record] panel menu download-page action failed:", error);
           });
           return;
+        }
+        if (id === CLEAR_RECORDING_PANEL_MENU_ID) {
+          clearRecordingTimeline().catch((error) => {
+            console.log("[OK-Record] panel menu clear-recording action failed:", error);
+          });
         }
       },
     },
@@ -300,14 +312,33 @@ async function stopRecordingRuntimeSchedulers(options = {}) {
   clearScheduledCapture();
   if (options.resetDocumentSignature) {
     recorderDocumentSignature = "";
+    activeRecordingContext = null;
   }
 }
 
 function handleDocumentChangeEvent(eventName) {
+  if (eventName === DOCUMENT_CLOSE_EVENT) {
+    queueDocumentCloseRecordingCheck();
+    if (!detectPaintingTimerDocumentChange(eventName)) {
+      recordPaintingActivity(eventName);
+    }
+    return;
+  }
+
   markDocumentDirty(eventName);
   if (!detectPaintingTimerDocumentChange(eventName)) {
     recordPaintingActivity(eventName);
   }
+}
+
+function queueDocumentCloseRecordingCheck() {
+  const runCloseCheck = () => {
+    stopRecordingAfterDocumentClose().catch((error) => {
+      console.log("[OK-Record] stop recording after document close failed:", error);
+    });
+  };
+  runCloseCheck();
+  setTimeout(runCloseCheck, 0);
 }
 
 function handlePhotoshopUserIdle(eventName, descriptor) {
@@ -348,6 +379,7 @@ async function captureNow() {
   try {
     if (wasRecording) {
       clearScheduledCapture();
+      assertActiveRecordingContextStillCurrent();
     }
 
     const result = await captureStepFrame({
@@ -408,6 +440,10 @@ async function startRecording() {
   }
 
   try {
+    const documentContext = assertSavedDocumentForRecording();
+    if (recorderState.activeSession && !recordingContext.isSessionForRecordingContext(recorderState.activeSession, documentContext)) {
+      setRecorderState(createClearedRecordingTimelineStatePatch());
+    }
     await ensureDocumentChangeListener();
     const intervalMinutes = readIntervalMinutesFromPanel();
     const idleCaptureSettings = readIdleCaptureSettingsFromPanel();
@@ -415,6 +451,7 @@ async function startRecording() {
     await ensureIdleCaptureListener(getIdleCaptureListenerDelaySeconds(idleCaptureSettings));
     recordingPauseRequested = false;
     recordingLoopActive = true;
+    activeRecordingContext = documentContext;
     recorderDocumentSignature = getActiveDocumentHistorySignature();
     startRecorderHistoryPoll();
     markDocumentDirty("recordingStart", { force: true });
@@ -432,14 +469,16 @@ async function startRecording() {
     recordingLoopActive = false;
     recordingPauseRequested = false;
     await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
+    const errorText = formatError(error);
     setRecorderState({
       state: RECORDER_STATES.error,
       nextCaptureAt: "",
-      lastError: formatError(error),
+      lastError: errorText,
     });
     updateControlState();
-    const message = `开始录制失败：${formatError(error)}`;
+    const message = `开始录制失败：${errorText}`;
     setStatus(message);
+    showBlockingNotice("开始录制失败", [errorText], "error");
     console.log("[OK-Record] start recording failed:", error);
     throw error;
   }
@@ -513,6 +552,7 @@ async function resumeRecording() {
   }
 
   try {
+    const documentContext = requireCurrentRecordingContextForSession("继续录制");
     await ensureDocumentChangeListener();
     const intervalMinutes = readIntervalMinutesFromPanel();
     const idleCaptureSettings = readIdleCaptureSettingsFromPanel();
@@ -520,6 +560,7 @@ async function resumeRecording() {
     await ensureIdleCaptureListener(getIdleCaptureListenerDelaySeconds(idleCaptureSettings));
     recordingPauseRequested = false;
     recordingLoopActive = true;
+    activeRecordingContext = documentContext;
     recorderDocumentSignature = getActiveDocumentHistorySignature();
     startRecorderHistoryPoll();
     setRecorderState(recorderDomain.resumeRecordingState(recorderState, {
@@ -571,6 +612,39 @@ async function stopRecording() {
   setStatus(formatRecorderStatus(wasRunning ? "录制已停止" : "录制未运行"));
 }
 
+async function stopRecordingAfterDocumentClose() {
+  const wasRecordingSession = isRecordingActiveOrPendingPause();
+  if (!wasRecordingSession) {
+    return;
+  }
+  if (isActiveRecordingContextStillCurrent()) {
+    return;
+  }
+  if (isActiveRecordingDocumentReferenceOpen()) {
+    return;
+  }
+
+  const wasBusy = isRecorderBusy();
+  recordingLoopActive = false;
+  recordingPauseRequested = false;
+  await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
+
+  if (wasBusy || isRecorderBusy()) {
+    setRecorderState({
+      nextCaptureAt: "",
+      documentDirty: false,
+      lastError: "",
+    });
+    updateControlState();
+    setStatus(formatRecorderStatus("PSD 文档已关闭，当前采样完成后录制会结束"));
+    return;
+  }
+
+  setRecorderState(recorderDomain.stopRecordingState(recorderState));
+  updateControlState();
+  setStatus(formatRecorderStatus("PSD 文档已关闭，录制已结束"));
+}
+
 async function clearRecordingTimeline() {
   try {
     if (isRecorderBusy()) {
@@ -587,35 +661,22 @@ async function clearRecordingTimeline() {
     recordingPauseRequested = false;
     await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
 
-    const outputDir = await getRecorderOutputDirNativePath();
+    const documentContext = requireCurrentRecordingContext();
+    const outputDir = documentContext.outputDir;
     const result = await nativeBridge.clearRecording({ outputDir });
-    setRecorderState({
+    setRecorderState(createClearedRecordingTimelineStatePatch({
       state: RECORDER_STATES.idle,
-      activeSession: null,
-      frameCount: 0,
-      lastCaptureAt: "",
-      lastExportPath: "",
-      lastExportLogPath: "",
-      lastExportProgress: null,
-      lastExportStatus: EXPORT_STATUSES.idle,
       ...(recorderState.exportSourceDir ? {} : {
         exportSourceFrameCount: 0,
         exportSourceLastFramePath: "",
         exportSourceAspectRatioConsistent: true,
         exportSourceAspectRatioGroupsJson: "",
       }),
-      nextCaptureAt: "",
-      documentDirty: false,
-      lastDirtyAt: "",
-      lastChangeEvent: "",
-      lastSkipAt: "",
-      skippedCaptureCount: 0,
-      lastError: "",
-    });
+    }));
     updateHoldSecondsInput(recorderState.exportDurationSeconds);
     updateControlState();
     hideExportNotice();
-    setStatus(formatRecorderStatus(`已清空序列帧：${result.framesPath || await getRecordingsRootDirNativePath()}`));
+    setStatus(formatRecorderStatus(`已清空序列帧：${result.framesPath || documentContext.recordingsRootDir}`));
     return result;
   } catch (error) {
     setRecorderState({ state: RECORDER_STATES.error, nextCaptureAt: "", lastError: formatError(error) });
@@ -776,6 +837,7 @@ async function exportSession() {
     if (!exportingDirectorySequence && (!recorderState.activeSession || !recorderState.activeSession.sessionId)) {
       throw new Error("没有可导出的录制时间线或导出序列帧目录");
     }
+    const exportContext = exportingDirectorySequence ? null : requireCurrentRecordingContextForSession("导出");
     if (!exportingDirectorySequence && recorderState.activeSession.exportFrameMetadataConsistent === false) {
       const frameName = recorderState.activeSession.inconsistentFrameName || "未知帧";
       throw new Error(`当前录制包含混合格式帧（从 ${frameName} 开始），请统一序列帧格式后再导出`);
@@ -807,7 +869,7 @@ async function exportSession() {
         crf: exportProfile.crf,
       }) :
       await nativeBridge.exportSession({
-        outputDir: await getRecorderOutputDirNativePath(),
+        outputDir: exportContext.outputDir,
         sessionId: recorderState.activeSession.sessionId,
         aspectRatioMode,
         holdSeconds: exportProfile.holdSeconds,
@@ -834,7 +896,7 @@ async function exportSession() {
       outputFileName: getNativeBasename(result.outputPath),
     });
     setStatus(exportMessages.statusMessage);
-    showExportNotice(exportMessages.noticeTitle, exportMessages.noticeLines, exportMessages.noticeTone);
+    showBlockingNotice(exportMessages.noticeTitle, exportMessages.noticeLines, exportMessages.noticeTone);
     console.log("[OK-Record] export session:", result);
     return result;
   } catch (error) {
@@ -848,7 +910,7 @@ async function exportSession() {
     updateControlState();
     const exportMessages = buildExportFailureMessages(errorText);
     setStatus(exportMessages.statusMessage);
-    showExportNotice(exportMessages.noticeTitle, exportMessages.noticeLines, exportMessages.noticeTone);
+    showBlockingNotice(exportMessages.noticeTitle, exportMessages.noticeLines, exportMessages.noticeTone);
     console.log("[OK-Record] export session failed:", error);
     throw error;
   }
@@ -1083,12 +1145,14 @@ async function openUpdateDownloadPage() {
   }
 }
 
-async function chooseFrameOutputDir() {
+async function chooseProjectOutputDir() {
   try {
-    if (recordingLoopActive || isRecordingPaused() || recordingPauseRequested || isRecorderBusy()) {
+    if (recordingLoopActive || recorderState.state === RECORDER_STATES.recording || recordingPauseRequested || isRecorderBusy()) {
       throw new Error("请先停止录制并等待当前任务完成");
     }
 
+    const wasPaused = isRecordingPaused();
+    const documentContext = requireCurrentRecordingContext();
     const localFileSystem = uxp.storage.localFileSystem;
     const folder = await localFileSystem.getFolder();
     if (!folder) {
@@ -1097,12 +1161,23 @@ async function chooseFrameOutputDir() {
 
     const nativePath = localFileSystem.getNativePath(folder);
     if (!nativePath) {
-      throw new Error("无法解析所选序列帧目录 native 路径");
+      throw new Error("无法解析所选 OK-Record 保存目录 native 路径");
+    }
+    const manualBinding = recordingContext.createManualProjectOutputBinding({
+      ...documentContext,
+      outputDir: nativePath,
+    });
+    const restoredAutomaticProjectOutputDir = Boolean(manualBinding.restoredAutomaticProjectOutputDir);
+
+    recordingLoopActive = false;
+    recordingPauseRequested = false;
+    if (wasPaused) {
+      await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
     }
 
     setRecorderState({
-      frameOutputDir: nativePath,
-      stepOutputDir: "",
+      frameOutputDir: manualBinding.frameOutputDir,
+      frameOutputDocumentKey: manualBinding.frameOutputDocumentKey,
       activeSession: null,
       frameCount: 0,
       lastCaptureAt: "",
@@ -1123,15 +1198,18 @@ async function chooseFrameOutputDir() {
     });
     queuePersistPanelSettings();
     updateControlState();
-    setStatus(formatRecorderStatus("保存目录已更新"));
+    const directoryStatus = restoredAutomaticProjectOutputDir ?
+      "已恢复当前 PSD 默认 OK-Record 保存目录" :
+      "OK-Record 保存目录已更新";
+    setStatus(formatRecorderStatus(wasPaused ? `${directoryStatus}；暂停录制已结束` : directoryStatus));
     await restoreRecorderState();
     await restoreStepFrameState();
     return nativePath;
   } catch (error) {
     setRecorderState({ lastError: formatError(error) });
-    setStatus(formatRecorderStatus("设置保存目录失败"));
+    setStatus(formatRecorderStatus("设置 OK-Record 保存目录失败"));
     updateControlState();
-    console.log("[OK-Record] choose frame output dir failed:", error);
+    console.log("[OK-Record] choose project output dir failed:", error);
     throw error;
   }
 }
@@ -1159,50 +1237,6 @@ async function openFrameOutputDir() {
     setStatus(formatRecorderStatus("打开序列帧目录失败"));
     updateControlState();
     console.log("[OK-Record] open frame output dir failed:", error);
-    throw error;
-  }
-}
-
-async function chooseStepOutputDir() {
-  try {
-    if (isRecorderBusy()) {
-      throw new Error(`录制器忙碌：${formatRecorderState(recorderState.state)}`);
-    }
-
-    const localFileSystem = uxp.storage.localFileSystem;
-    const folder = await localFileSystem.getFolder();
-    if (!folder) {
-      return null;
-    }
-
-    const nativePath = localFileSystem.getNativePath(folder);
-    if (!nativePath) {
-      throw new Error("无法解析所选步骤图保存目录 native 路径");
-    }
-
-    setRecorderState({
-      stepOutputDir: nativePath,
-      stepFrameCount: 0,
-      lastStepCaptureAt: "",
-      lastStepFramePath: "",
-      lastError: "",
-    });
-    queuePersistPanelSettings();
-    const stepOutputDir = await getStepOutputDirNativePath();
-    const scan = await scanSequenceFrames(stepOutputDir);
-    setRecorderState({
-      stepFrameCount: Number(scan.frameCount) || 0,
-      lastStepFramePath: scan.lastFramePath || "",
-      lastError: "",
-    });
-    updateControlState();
-    setStatus(formatRecorderStatus("步骤图保存目录已更新"));
-    return stepOutputDir;
-  } catch (error) {
-    setRecorderState({ lastError: formatError(error) });
-    setStatus(formatRecorderStatus("设置步骤图保存目录失败"));
-    updateControlState();
-    console.log("[OK-Record] choose step output dir failed:", error);
     throw error;
   }
 }
@@ -1303,6 +1337,7 @@ async function runScheduledCapture(label, options) {
   clearScheduledCapture();
 
   try {
+    assertActiveRecordingContextStillCurrent();
     if (shouldSkipScheduledCapture(options)) {
       skipScheduledCapture();
       if (recordingLoopActive) {
@@ -1330,12 +1365,23 @@ async function runScheduledCapture(label, options) {
 
     if (recordingLoopActive) {
       scheduleNextCapture("Recording");
+    } else if (recorderState.state === RECORDER_STATES.recording) {
+      setRecorderState(recorderDomain.pauseRecordingState(recorderState));
+      updateControlState();
+      setStatus(formatRecorderStatus("录制已暂停"));
     }
   } catch (error) {
     recordingLoopActive = false;
     recordingPauseRequested = false;
     await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
+    setRecorderState({
+      state: RECORDER_STATES.error,
+      nextCaptureAt: "",
+      lastError: formatError(error),
+    });
     updateControlState();
+    setStatus(formatRecorderStatus(`${label}失败：${formatError(error)}`));
+    showBlockingNotice(`${label}失败`, [formatError(error)], "error");
     throw error;
   }
 }
@@ -1472,7 +1518,7 @@ async function captureStepFrame(options) {
     updateControlState();
     const message = `${label}失败：${formatError(error)}`;
     setStatus(message);
-    showExportNotice(`${label}失败`, [formatError(error)], "error");
+    showBlockingNotice(`${label}失败`, [formatError(error)], "error");
     console.log("[OK-Record] capture step frame failed:", error);
     throw error;
   }
@@ -1493,7 +1539,8 @@ async function captureFrame(options) {
     setStatus(formatRecorderStatus(`${label}：正在读取文档合成图...`));
 
     const captureStartedAtChangeGeneration = documentChangeGeneration;
-    const outputDir = await getRecorderOutputDirNativePath();
+    const documentContext = assertActiveRecordingContextStillCurrent();
+    const outputDir = documentContext.outputDir;
     const captureTargetWidth = readFrameCaptureTargetWidthFromPanel();
     const modalStartedAtMs = nowMs();
     const capture = await core.executeAsModal(captureCompositeForFrameRead, {
@@ -1520,7 +1567,7 @@ async function captureFrame(options) {
       copyMs,
       nativeWriteMs: 0,
     });
-    const session = ensureActiveSessionForCapture(capture.metadata);
+    const session = ensureActiveSessionForCapture(capture.metadata, documentContext);
 
     capture.metadata.outputDir = outputDir;
     capture.metadata.sessionId = session.sessionId;
@@ -1614,25 +1661,23 @@ async function restoreRecorderState() {
       return null;
     }
 
+    const documentContext = createCurrentRecordingContext();
+    if (!documentContext.ok) {
+      setRecorderState(createClearedRecordingTimelineStatePatch({ state: RECORDER_STATES.idle }));
+      updateControlState();
+      setStatus(formatRecorderStatus("就绪"));
+      return null;
+    }
+
     setStatus(formatRecorderStatus("正在恢复已完成帧..."));
 
-    const outputDir = await getRecorderOutputDirNativePath();
+    const outputDir = documentContext.outputDir;
     const scan = await scanRecordingSessionsForOutputRoot(outputDir);
 
     if (!scan.restored) {
-      setRecorderState({
+      setRecorderState(createClearedRecordingTimelineStatePatch({
         state: RECORDER_STATES.idle,
-        activeSession: null,
-        frameCount: 0,
-        lastCaptureAt: "",
-        nextCaptureAt: "",
-        documentDirty: false,
-        lastDirtyAt: "",
-        lastChangeEvent: "",
-        lastSkipAt: "",
-        skippedCaptureCount: 0,
-        lastError: "",
-      });
+      }));
       updateControlState();
       setStatus(formatRecorderStatus("就绪"));
       return scan;
@@ -1650,7 +1695,7 @@ async function restoreRecorderState() {
     const firstFrameMetadataJson = activeSessionScan.firstFrameMetadataJson || activeSessionScan.lastFrameMetadataJson;
     const firstFrameMetadata = parseRecoveredFrameMetadata(firstFrameMetadataJson);
 
-    const session = {
+    const session = recordingContext.applyRecordingContextToSession({
       sessionId: activeSessionScan.sessionId,
       createdAt: "",
       frameCount: Number(activeSessionScan.frameCount),
@@ -1670,7 +1715,7 @@ async function restoreRecorderState() {
       majorityAspectRatioFrameCount: Number(activeSessionScan.majorityAspectRatioFrameCount) || 0,
       inconsistentFrameName: activeSessionScan.inconsistentFrameName || "",
       inconsistentMetadataPath: activeSessionScan.inconsistentMetadataPath || "",
-    };
+    }, documentContext);
 
     setRecorderState({
       state: RECORDER_STATES.idle,
@@ -1772,6 +1817,15 @@ function uniqueStrings(values) {
 
 async function restoreStepFrameState() {
   try {
+    if (!createCurrentRecordingContext().ok) {
+      setRecorderState({
+        stepFrameCount: 0,
+        lastStepFramePath: "",
+        lastError: "",
+      });
+      updateControlState();
+      return null;
+    }
     const stepsDir = await getStepOutputDirNativePath();
     const scan = await scanSequenceFrames(stepsDir);
     if (!scan) {
@@ -1899,48 +1953,107 @@ function getFrameCaptureTargetWidth(descriptor) {
   );
 }
 
-async function getPluginDataNativePath() {
-  const localFileSystem = uxp.storage.localFileSystem;
-  const dataFolder = await localFileSystem.getDataFolder();
-  const nativePath = localFileSystem.getNativePath(dataFolder);
-  if (!nativePath) {
-    throw new Error("无法解析插件数据目录 native 路径");
-  }
-  return nativePath;
-}
-
 async function getRecorderOutputDirNativePath() {
-  return pathPolicy.resolveRecorderOutputDir({
-    manualFrameOutputDir: recorderState.frameOutputDir,
-    activeDocumentPath: getActiveDocumentNativePath(),
-    pluginDataDir: await getPluginDataNativePath(),
-  });
+  return requireCurrentRecordingContext().outputDir;
 }
 
 async function getRecordingsRootDirNativePath() {
-  return pathPolicy.resolveRecordingsRootDir({
-    manualFrameOutputDir: recorderState.frameOutputDir,
-    activeDocumentPath: getActiveDocumentNativePath(),
-    pluginDataDir: await getPluginDataNativePath(),
-  });
+  return requireCurrentRecordingContext().recordingsRootDir;
 }
 
-function getActiveDocumentNativePath() {
+function getActiveDocumentDescriptor() {
   try {
     const activeDocument = photoshop.app && photoshop.app.activeDocument;
-    return activeDocument && activeDocument.path ? activeDocument.path : "";
+    if (!activeDocument) {
+      return {
+        documentPath: "",
+        documentId: "",
+        cloudDocument: false,
+      };
+    }
+    return {
+      documentPath: activeDocument.path || "",
+      documentId: activeDocument.id === undefined || activeDocument.id === null ? "" : String(activeDocument.id),
+      cloudDocument: Boolean(activeDocument.cloudDocument),
+    };
   } catch (error) {
-    return "";
+    return {
+      documentPath: "",
+      documentId: "",
+      cloudDocument: false,
+    };
   }
 }
 
-function getActiveDocumentProjectRootNativePath() {
-  return pathPolicy.getLocalDocumentProjectRootNativePath(getActiveDocumentNativePath());
+function getActiveDocumentNativePath() {
+  return getActiveDocumentDescriptor().documentPath;
+}
+
+function createCurrentRecordingContext() {
+  return recordingContext.createRecordingContext({
+    ...getActiveDocumentDescriptor(),
+    manualProjectOutputDir: recorderState.frameOutputDir,
+    manualProjectOutputDocumentKey: recorderState.frameOutputDocumentKey,
+  });
+}
+
+function requireCurrentRecordingContext() {
+  return recordingContext.requireRecordingContext({
+    ...getActiveDocumentDescriptor(),
+    manualProjectOutputDir: recorderState.frameOutputDir,
+    manualProjectOutputDocumentKey: recorderState.frameOutputDocumentKey,
+  });
+}
+
+function assertSavedDocumentForRecording() {
+  return requireCurrentRecordingContext();
+}
+
+function requireCurrentRecordingContextForSession(actionLabel) {
+  const context = requireCurrentRecordingContext();
+  if (recorderState.activeSession && !recordingContext.isSessionForRecordingContext(recorderState.activeSession, context)) {
+    throw new Error(`${actionLabel}前请先切回这条录制时间线对应的本地 PSD/PSB 文档。`);
+  }
+  return context;
+}
+
+function assertActiveRecordingContextStillCurrent() {
+  if (!activeRecordingContext) {
+    return requireCurrentRecordingContext();
+  }
+  const currentContext = requireCurrentRecordingContext();
+  if (!recordingContext.isSameRecordingContext(activeRecordingContext, currentContext)) {
+    throw new Error(DOCUMENT_CONTEXT_CHANGED_MESSAGE);
+  }
+  return activeRecordingContext;
+}
+
+function isActiveRecordingContextStillCurrent() {
+  if (!activeRecordingContext) {
+    return false;
+  }
+  const currentContext = createCurrentRecordingContext();
+  return currentContext.ok && recordingContext.isSameRecordingContext(activeRecordingContext, currentContext);
+}
+
+function isActiveRecordingDocumentReferenceOpen() {
+  if (!activeRecordingContext || !activeRecordingContext.documentId) {
+    return true;
+  }
+
+  const documentId = Number(activeRecordingContext.documentId);
+  if (!Number.isFinite(documentId) || documentId <= 0) {
+    return true;
+  }
+
+  return Boolean(photoshop.action.validateReference({
+    _ref: "document",
+    _id: documentId,
+  }));
 }
 
 async function getStepOutputDirNativePath() {
   return pathPolicy.resolveStepOutputDir({
-    manualStepOutputDir: recorderState.stepOutputDir,
     recorderOutputDir: await getRecorderOutputDirNativePath(),
   });
 }
@@ -1969,6 +2082,26 @@ function setRecorderState(patch) {
   recorderState = {
     ...recorderState,
     ...patch,
+  };
+}
+
+function createClearedRecordingTimelineStatePatch(extra = {}) {
+  return {
+    activeSession: null,
+    frameCount: 0,
+    lastCaptureAt: "",
+    lastExportPath: "",
+    lastExportLogPath: "",
+    lastExportProgress: null,
+    lastExportStatus: EXPORT_STATUSES.idle,
+    nextCaptureAt: "",
+    documentDirty: false,
+    lastDirtyAt: "",
+    lastChangeEvent: "",
+    lastSkipAt: "",
+    skippedCaptureCount: 0,
+    lastError: "",
+    ...extra,
   };
 }
 
@@ -2293,14 +2426,19 @@ function updatePanelSettingsInputs() {
   updateCaptureResolutionPresetInput();
 }
 
-function formatFrameOutputDir() {
-  return recorderState.frameOutputDir || getActiveDocumentProjectRootNativePath() || "默认插件数据目录";
+function formatProjectOutputDir() {
+  const context = createCurrentRecordingContext();
+  return context.ok ? context.outputDir : "请先保存本地 PSD/PSB 文档";
+}
+
+function formatRecordingsOutputDir() {
+  const context = createCurrentRecordingContext();
+  return context.ok ? context.recordingsRootDir : `OK-Record 保存目录下的 ${RECORDINGS_ROOT_DIR_NAME}`;
 }
 
 function formatStepOutputDir() {
-  return recorderState.stepOutputDir
-    ? pathPolicy.joinNativePath(recorderState.stepOutputDir, DEFAULT_STEP_OUTPUT_DIR_NAME)
-    : `保存目录下的 ${DEFAULT_STEP_OUTPUT_DIR_NAME}`;
+  const context = createCurrentRecordingContext();
+  return context.ok ? context.stepOutputDir : `OK-Record 保存目录下的 ${DEFAULT_STEP_OUTPUT_DIR_NAME}`;
 }
 
 function clearScheduledCapture() {
@@ -2690,18 +2828,18 @@ function clampInteger(value, fallbackValue, minValue, maxValue) {
   return Math.round(clampNumber(value, fallbackValue, minValue, maxValue));
 }
 
-function ensureActiveSessionForCapture(captureMetadata) {
+function ensureActiveSessionForCapture(captureMetadata, documentContext) {
   const activeSession = recorderState.activeSession;
-  if (activeSession) {
+  if (recordingContext.isSessionForRecordingContext(activeSession, documentContext)) {
     return activeSession;
   }
 
-  return createActiveSession(captureMetadata);
+  return createActiveSession(captureMetadata, documentContext);
 }
 
-function createActiveSession(captureMetadata) {
+function createActiveSession(captureMetadata, documentContext) {
   const now = new Date();
-  const session = {
+  const session = recordingContext.applyRecordingContextToSession({
     sessionId: RECORDING_TIMELINE_ID,
     createdAt: now.toISOString(),
     frameCount: 0,
@@ -2721,7 +2859,7 @@ function createActiveSession(captureMetadata) {
     majorityAspectRatioFrameCount: 0,
     inconsistentFrameName: "",
     inconsistentMetadataPath: "",
-  };
+  }, documentContext);
   setRecorderState({ activeSession: session });
   return session;
 }
@@ -2841,8 +2979,9 @@ function formatRecorderStatus(message) {
   const lines = [
     message,
     `状态：${formatRecorderState(recorderState.state)}`,
-    `保存目录：${formatFrameOutputDir()}`,
-    `步骤图保存目录：${formatStepOutputDir()}`,
+    `OK-Record 保存目录：${formatProjectOutputDir()}`,
+    `序列帧目录：${formatRecordingsOutputDir()}`,
+    `步骤图目录：${formatStepOutputDir()}`,
   ];
 
   if (recorderState.activeSession) {
@@ -3249,8 +3388,10 @@ function resetPanelNodeReferences() {
   intervalSecondsInputNode = null;
   idleCaptureDelaySecondsInputNode = null;
   idleCaptureMaxWaitSecondsInputNode = null;
-  chooseFrameOutputDirButtonNode = null;
+  chooseProjectOutputDirButtonNode = null;
   openFrameOutputDirButtonNode = null;
+  openStepOutputDirButtonNode = null;
+  clearRecordingTimelineButtonNode = null;
   startRecordingButtonNode = null;
   captureNowButtonNode = null;
   exportButtonNode = null;
@@ -3273,10 +3414,10 @@ function assignPanelNodeReferences(refs) {
   intervalSecondsInputNode = refs.intervalSecondsInputNode || null;
   idleCaptureDelaySecondsInputNode = refs.idleCaptureDelaySecondsInputNode || null;
   idleCaptureMaxWaitSecondsInputNode = refs.idleCaptureMaxWaitSecondsInputNode || null;
-  chooseFrameOutputDirButtonNode = refs.chooseFrameOutputDirButtonNode || null;
+  chooseProjectOutputDirButtonNode = refs.chooseProjectOutputDirButtonNode || null;
   openFrameOutputDirButtonNode = refs.openFrameOutputDirButtonNode || null;
-  chooseStepOutputDirButtonNode = refs.chooseStepOutputDirButtonNode || null;
   openStepOutputDirButtonNode = refs.openStepOutputDirButtonNode || null;
+  clearRecordingTimelineButtonNode = refs.clearRecordingTimelineButtonNode || null;
   startRecordingButtonNode = refs.startRecordingButtonNode || null;
   captureNowButtonNode = refs.captureNowButtonNode || null;
   chooseExportSequenceDirButtonNode = refs.chooseExportSequenceDirButtonNode || null;
@@ -3295,6 +3436,9 @@ function assignPanelNodeReferences(refs) {
 
 
 function getRecordingIndicatorClassName() {
+  if (recorderState.state === RECORDER_STATES.error && recorderState.lastError) {
+    return "ok-record-record-indicator-error";
+  }
   if (isRecordingPaused() || recordingPauseRequested) {
     return "ok-record-record-indicator-paused";
   }
@@ -3305,6 +3449,9 @@ function getRecordingIndicatorClassName() {
 }
 
 function formatRecordingControlLabel() {
+  if (recorderState.state === RECORDER_STATES.error && recorderState.lastError) {
+    return "录制失败";
+  }
   if (isRecordingPaused() || recordingPauseRequested) {
     return `暂停录制 ${getRecordingFrameCountText()}`;
   }
@@ -3390,15 +3537,7 @@ function getPaintingTimerActionLabel() {
 }
 
 
-function isRecordingClearShortcut(event) {
-  return Boolean(event && event.type === "click" && event.ctrlKey && event.shiftKey && event.altKey);
-}
-
-async function toggleRecording(event) {
-  if (isRecordingClearShortcut(event)) {
-    await clearRecordingTimeline();
-    return;
-  }
+async function toggleRecording() {
   if (recordingPauseRequested && isRecorderBusy()) {
     return;
   }
@@ -3479,10 +3618,10 @@ function renderPanel() {
       onHoldSecondsChange: handleHoldSecondsChange,
       onExportProfileChange: handleExportProfileChange,
       onPaintingTimerTimeoutChange: handlePaintingTimerTimeoutChange,
-      onChooseFrameOutputDir: () => chooseFrameOutputDir(),
+      onChooseProjectOutputDir: () => chooseProjectOutputDir(),
       onOpenFrameOutputDir: () => openFrameOutputDir(),
-      onChooseStepOutputDir: () => chooseStepOutputDir(),
       onOpenStepOutputDir: () => openStepOutputDir(),
+      onClearRecordingTimeline: () => clearRecordingTimeline(),
       onToggleRecording: toggleRecording,
       onCaptureNow: () => captureNow(),
       onPaintingTimerControl: (event) => handlePaintingTimerControl(event),
@@ -3508,6 +3647,24 @@ function showExportNotice(title, lines, tone = "success") {
     exportNoticeTitleNode,
     exportNoticeBodyNode,
   }, title, lines, tone);
+}
+
+function showBlockingNotice(title, lines, tone = "success") {
+  showExportNotice(title, lines, tone);
+  showAlertNotice(title, lines);
+}
+
+function showAlertNotice(title, lines) {
+  if (typeof alert !== "function") {
+    return;
+  }
+
+  const detailText = Array.isArray(lines) ?
+    lines.filter(Boolean).join("\n") :
+    String(lines || "");
+  const titleText = String(title || "");
+  const message = detailText ? `${titleText}\n\n${detailText}` : titleText;
+  alert(message);
 }
 
 function hideExportNotice() {
@@ -3536,17 +3693,20 @@ function updateControlState() {
   if (idleCaptureMaxWaitSecondsInputNode) {
     idleCaptureMaxWaitSecondsInputNode.disabled = recordingLoopActive || busy;
   }
-  if (chooseFrameOutputDirButtonNode) {
-    chooseFrameOutputDirButtonNode.disabled = activeRecordingSession || busy;
+  if (chooseProjectOutputDirButtonNode) {
+    chooseProjectOutputDirButtonNode.disabled = recordingLoopActive ||
+      recordingPauseRequested ||
+      recorderState.state === RECORDER_STATES.recording ||
+      busy;
   }
   if (openFrameOutputDirButtonNode) {
     openFrameOutputDirButtonNode.disabled = busy;
   }
-  if (chooseStepOutputDirButtonNode) {
-    chooseStepOutputDirButtonNode.disabled = busy;
-  }
   if (openStepOutputDirButtonNode) {
     openStepOutputDirButtonNode.disabled = busy;
+  }
+  if (clearRecordingTimelineButtonNode) {
+    clearRecordingTimelineButtonNode.disabled = busy;
   }
   if (startRecordingButtonNode) {
     setButtonClassName(
@@ -3557,8 +3717,8 @@ function updateControlState() {
     );
     panelView.renderRecordingStatusLabel(startRecordingButtonNode, getRecordingButtonViewState());
     const recordingActionLabel = paused || recordingPauseRequested ?
-      "继续录制；Ctrl+Shift+Alt+点击清空序列帧" :
-      (activeRecordingSession ? "暂停录制；Ctrl+Shift+Alt+点击清空序列帧" : "开始录制；Ctrl+Shift+Alt+点击清空序列帧");
+      "继续录制" :
+      (activeRecordingSession ? "暂停录制" : "开始录制");
     startRecordingButtonNode.title = recordingActionLabel;
     startRecordingButtonNode.setAttribute("aria-label", recordingActionLabel);
     setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);
