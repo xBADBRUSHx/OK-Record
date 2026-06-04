@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $repoRoot "tests\out\native-export-runner"
 $testSource = Join-Path $repoRoot "tests\native-export-runner.test.cpp"
+$frameSetSource = Join-Path $repoRoot "native\src\export_frame_set.cpp"
 $runnerSource = Join-Path $repoRoot "native\src\export_runner.cpp"
 $progressSource = Join-Path $repoRoot "native\src\export_progress.cpp"
 $recoverySource = Join-Path $repoRoot "native\src\storage_recovery.cpp"
@@ -57,9 +58,12 @@ $compileArgs = @(
     "/Fo$buildDir\",
     "/Fd$buildDir\native-export-runner.test.pdb",
     $testSource,
+    $frameSetSource,
     $runnerSource,
     $progressSource,
-    $recoverySource
+    $recoverySource,
+    "windowscodecs.lib",
+    "ole32.lib"
 )
 
 $vcvars = Resolve-VcVars

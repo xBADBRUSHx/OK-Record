@@ -1,12 +1,12 @@
 Last Updated: 2026-05-29
 Authority: macOS build, verification, package, runtime smoke, and diagnostic handoff notes.
-Read When: building or testing OK Record on macOS, or collecting a Mac user failure report.
+Read When: building or testing OK-Record on macOS, or collecting a Mac user failure report.
 Owner: packaging and native macOS maintainers.
 Scope: macOS only; Windows packaging remains owned by `packaging/INSTALL.md`.
 
 # macOS Build And Test
 
-OK Record can be tested on macOS from source, but the macOS native plugin binaries must be built on a Mac. A Windows-built package is not proof that the macOS package works.
+OK-Record can be tested on macOS from source, but the macOS native plugin binaries must be built on a Mac. A Windows-built package is not proof that the macOS package works.
 
 ## Prerequisites
 
@@ -48,7 +48,7 @@ The macOS package should contain both:
 
 After installing or loading the package in Photoshop:
 
-1. Open the OK Record panel.
+1. Open the OK-Record panel.
 2. Start a short recording from a saved local PSD/PSB.
 3. Confirm frames are written under `延时录制_Recordings/frames/`.
 4. Run manual sampling and confirm `步骤图_Steps/step_001.png`.

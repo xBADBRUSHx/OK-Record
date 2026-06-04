@@ -165,7 +165,7 @@ function formatError(error) {
   const message = error && error.message ? error.message : String(error);
   if (message.includes("FFmpeg was not found")) {
     return [
-      "未找到 FFmpeg。请安装 FFmpeg，或下载 OK Record 的 with-ffmpeg 免配置版。",
+      "未找到 FFmpeg。请安装 FFmpeg，或下载 OK-Record 的 with-ffmpeg 免配置版。",
       "Windows 安装命令：winget install --id Gyan.FFmpeg.Essentials -e --source winget",
       "安装后请重启 Photoshop。",
     ].join("\n");
@@ -179,7 +179,7 @@ function formatError(error) {
     message.includes("Current export only supports frames captured from 8-bit RGB or RGBA source pixels")
   ) {
     return [
-      "当前文档不是 OK Record 可录制的 8 位 RGB 像素格式。",
+      "当前文档不是 OK-Record 可录制的 8 位 RGB 像素格式。",
       "请在 Photoshop 菜单 图像 > 模式 中确认：RGB 颜色、8 位/通道。",
       "如果正在处理 16/32 位或 CMYK/Lab/灰度文档，建议先复制或另存后再转换，避免影响原文件。",
     ].join("\n");

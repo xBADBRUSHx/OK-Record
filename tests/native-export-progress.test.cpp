@@ -64,6 +64,23 @@ int main() {
     assert(partial.frame == 5);
     assert(CloseEnough(partial.percent, 25.0));
 
+    const ok_record::FfmpegExportProgress malformedNumeric =
+        ok_record::ParseFfmpegProgressText(
+            "frame=5junk\n"
+            "fps=30x\n"
+            "out_time=00:00:02.000bad\n"
+            "total_size=1024bytes\n"
+            "progress=continue\n",
+            10.0,
+            20);
+    assert(malformedNumeric.parsed);
+    assert(malformedNumeric.status == "continue");
+    assert(malformedNumeric.frame == 0);
+    assert(CloseEnough(malformedNumeric.fps, 0.0));
+    assert(CloseEnough(malformedNumeric.outTimeSeconds, 0.0));
+    assert(malformedNumeric.totalSizeBytes == 0);
+    assert(CloseEnough(malformedNumeric.percent, 0.0));
+
     const ok_record::FfmpegExportProgress empty =
         ok_record::ParseFfmpegProgressText("not progress\n", 10.0, 10);
     assert(!empty.parsed);

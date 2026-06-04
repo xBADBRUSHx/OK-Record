@@ -32,7 +32,13 @@ const CAPTURE_RESOLUTION_PRESETS = Object.freeze([
 ]);
 
 const DEFAULT_FRAME_QUALITY_PRESET_ID = "default";
-const FRAME_QUALITY_PRESET_IDS = Object.freeze(["low", DEFAULT_FRAME_QUALITY_PRESET_ID, "high", "lossless"]);
+const FRAME_QUALITY_PRESETS = Object.freeze([
+  { id: "low", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 60 },
+  { id: DEFAULT_FRAME_QUALITY_PRESET_ID, storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 80 },
+  { id: "high", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 92 },
+  { id: "lossless", storageFormat: "png", frameExtension: ".png", jpegQuality: 0 },
+]);
+const FRAME_QUALITY_PRESET_IDS = Object.freeze(FRAME_QUALITY_PRESETS.map((preset) => preset.id));
 
 function toFiniteNumber(value, fallbackValue) {
   const number = Number(value);
@@ -177,6 +183,7 @@ module.exports = {
   DEFAULT_EXPORT_MAX_WIDTH,
   DEFAULT_CAPTURE_RESOLUTION_PRESET_ID,
   DEFAULT_FRAME_QUALITY_PRESET_ID,
+  FRAME_QUALITY_PRESETS,
   FRAME_QUALITY_PRESET_IDS,
   CAPTURE_RESOLUTION_PRESETS,
   createDefaultPanelSettings,

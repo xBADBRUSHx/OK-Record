@@ -10,6 +10,8 @@ const timer = require(path.join(repoRoot, "uxp", "domain", "painting-timer.js"))
 assert.strictEqual(timer.DEFAULT_IDLE_TIMEOUT_SECONDS, contract.activityTimer.defaultIdleTimeoutSeconds);
 assert.strictEqual(timer.MIN_IDLE_TIMEOUT_SECONDS, contract.activityTimer.minIdleTimeoutSeconds);
 assert.strictEqual(timer.MAX_IDLE_TIMEOUT_SECONDS, contract.activityTimer.maxIdleTimeoutSeconds);
+assert.strictEqual(timer.PAINTING_TIMER_STATE_SCHEMA, contract.activityTimer.schema);
+assert.strictEqual(timer.PAINTING_TIMER_STATE_FILENAME, contract.activityTimer.stateFilename);
 
 const initial = timer.createInitialPaintingTimerState();
 assert.strictEqual(initial.enabled, false);
@@ -89,3 +91,65 @@ assert.strictEqual(restoredEnded.active, false);
 assert.strictEqual(restoredEnded.activeStartedAtMs, 0);
 assert.strictEqual(restoredEnded.idleDeadlineAtMs, 0);
 assert.strictEqual(restoredEnded.idleDeadlineAt, "");
+
+const persisted = timer.parsePersistedPaintingTimerState(JSON.stringify({
+  schema: contract.activityTimer.schema,
+  state: {
+    enabled: true,
+    active: true,
+    ended: false,
+    idleTimeoutSeconds: "0",
+    accumulatedSeconds: "-5",
+    activeStartedAtMs: startMs,
+    idleDeadlineAtMs: startMs + 30000,
+    startedAt: new Date(startMs).toISOString(),
+    stoppedAt: 123,
+    lastActivityAt: new Date(startMs + 1000).toISOString(),
+    idleDeadlineAt: new Date(startMs + 30000).toISOString(),
+    eventCount: "4.8",
+    lastEventName: "paint",
+    lastStopReason: "waiting",
+    lastError: "old",
+  },
+}));
+assert.strictEqual(persisted.enabled, true);
+assert.strictEqual(persisted.active, true);
+assert.strictEqual(persisted.idleTimeoutSeconds, contract.activityTimer.minIdleTimeoutSeconds);
+assert.strictEqual(persisted.accumulatedSeconds, 0);
+assert.strictEqual(persisted.activeStartedAtMs, startMs);
+assert.strictEqual(persisted.idleDeadlineAtMs, startMs + 30000);
+assert.strictEqual(persisted.stoppedAt, "");
+assert.strictEqual(persisted.eventCount, 4);
+assert.strictEqual(persisted.lastEventName, "paint");
+assert.strictEqual(persisted.lastStopReason, "waiting");
+assert.strictEqual(persisted.lastError, "");
+
+assert.throws(
+  () => timer.parsePersistedPaintingTimerState({ schema: "wrong", state: {} }),
+  /schema/,
+  "timer parser should reject unsupported persisted schemas",
+);
+
+const persistedSnapshot = timer.createPersistedPaintingTimerState({
+  ...started,
+  eventCount: 2,
+  lastEventName: "paint",
+}, "2026-06-04T00:00:00.000Z", 12.5);
+assert.strictEqual(persistedSnapshot.schema, contract.activityTimer.schema);
+assert.strictEqual(persistedSnapshot.savedAt, "2026-06-04T00:00:00.000Z");
+assert.strictEqual(persistedSnapshot.state.active, true);
+assert.strictEqual(persistedSnapshot.state.accumulatedSeconds, 12.5);
+assert.strictEqual(persistedSnapshot.state.activeStartedAtMs, startMs);
+assert.strictEqual(persistedSnapshot.state.eventCount, 2);
+assert.strictEqual(persistedSnapshot.state.lastEventName, "paint");
+
+const pausedSnapshot = timer.createPersistedPaintingTimerState({
+  ...ended,
+  activeStartedAtMs: startMs,
+  idleDeadlineAtMs: startMs + 1000,
+  idleDeadlineAt: new Date(startMs + 1000).toISOString(),
+}, "2026-06-04T00:00:00.000Z");
+assert.strictEqual(pausedSnapshot.state.active, false);
+assert.strictEqual(pausedSnapshot.state.activeStartedAtMs, 0);
+assert.strictEqual(pausedSnapshot.state.idleDeadlineAtMs, 0);
+assert.strictEqual(pausedSnapshot.state.idleDeadlineAt, "");

@@ -1,6 +1,6 @@
 {
   "id": "com.badbrush.okrecord",
-  "name": "OK Record",
+  "name": "OK-Record",
   "manifestVersion": 6,
   "version": "1.0.2",
   "main": "main.js",
@@ -19,7 +19,7 @@
       "type": "panel",
       "id": "okRecordPanel",
       "label": {
-        "default": "OK Record"
+        "default": "OK-Record"
       },
       "minimumSize": {
         "width": 250,

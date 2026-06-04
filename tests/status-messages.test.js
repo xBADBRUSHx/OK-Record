@@ -15,7 +15,7 @@ const exportResult = {
   outputFps: 30,
   outputWidth: 1920,
   outputHeight: 1080,
-  outputPath: "E:\\Project\\exports\\OK_Record.mp4",
+  outputPath: "E:\\Project\\exports\\OK-Record_timelapse_test.mp4",
   logPath: "E:\\Project\\exports\\export.log",
   progressPath: "E:\\Project\\exports\\progress.log",
   targetDurationSeconds: 60,
@@ -40,7 +40,7 @@ const successMessages = statusMessages.buildExportSuccessMessages({
   exportProfile,
   frameQualityLabel: "默认",
   captureResolutionLabel: "1080p",
-  outputFileName: "OK_Record.mp4",
+  outputFileName: "OK-Record_timelapse_test.mp4",
 });
 
 assert.strictEqual(successMessages.noticeTitle, "导出完成");
@@ -55,8 +55,8 @@ assert(successMessages.noticeLines.includes("每秒序列帧：2 张"), "export 
 assert(successMessages.noticeLines.includes("输出帧率：30 fps"), "export notice must include output fps");
 assert(successMessages.noticeLines.includes("质量：默认"), "export notice must include quality preset label");
 assert(successMessages.noticeLines.includes("分辨率：1080p"), "export notice must include resolution label");
-assert(successMessages.noticeLines.includes("输出文件：OK_Record.mp4"), "export notice must include output file name");
-assert(successMessages.noticeLines.includes("输出路径：E:\\Project\\exports\\OK_Record.mp4"), "export notice must include full output path");
+assert(successMessages.noticeLines.includes("输出文件：OK-Record_timelapse_test.mp4"), "export notice must include output file name");
+assert(successMessages.noticeLines.includes("输出路径：E:\\Project\\exports\\OK-Record_timelapse_test.mp4"), "export notice must include full output path");
 
 const failureMessages = statusMessages.buildExportFailureMessages("未找到 FFmpeg");
 assert.deepStrictEqual(failureMessages, {

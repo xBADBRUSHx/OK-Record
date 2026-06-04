@@ -9,11 +9,16 @@ const readJson = (relativePath) => JSON.parse(readText(relativePath));
 const contract = readJson("shared/recorder-contract.json");
 const manifest = readJson("uxp/manifest.json");
 const updateManifest = readJson("docs/update.json");
+const readme = readText("README.md");
+const readmeEnglish = readText("README.en.md");
+const agentsDocs = readText("AGENTS.md");
+const contributingDocs = readText("CONTRIBUTING.md");
 const uxpMain = readText("uxp/main.js");
 const panelViewModule = readText("uxp/panel-view.js");
 const panelStylesModule = readText("uxp/panel-styles.js");
 const statusMessagesModule = readText("uxp/status-messages.js");
 const settingsModelModule = readText("uxp/domain/settings-model.js");
+const paintingTimerModule = readText("uxp/domain/painting-timer.js");
 const pathPolicyModule = readText("uxp/domain/path-policy.js");
 const recordingContextModule = readText("uxp/domain/recording-context.js");
 const localDocumentation = readText("docs/index.html");
@@ -23,9 +28,13 @@ const scopedChineseDocumentationIndex = readText("docs/zh-CN/README.md");
 const securityPolicy = readText("SECURITY.md");
 const packageInstallNotes = readText("packaging/INSTALL.md");
 const releaseNotes = readText("packaging/RELEASE_NOTES.md");
+const runtimeSmokeChecklist = readText("packaging/RUNTIME_SMOKE_CHECKLIST.md");
 const macBuildDocs = readText("docs/mac-build.md");
+const macBuildChineseDocs = readText("docs/zh-CN/mac-build.md");
 const recorderSchedulerModule = readText("uxp/recorder-scheduler.js");
 const nativeModule = readText("native/src/module.cpp");
+const nativeExportFrameSetHeader = readText("native/src/export_frame_set.h");
+const nativeExportFrameSetModule = readText("native/src/export_frame_set.cpp");
 const nativeStorageRecoveryHeader = readText("native/src/storage_recovery.h");
 const nativeStorageRecoveryModule = readText("native/src/storage_recovery.cpp");
 const nativeExportProgressHeader = readText("native/src/export_progress.h");
@@ -39,9 +48,10 @@ const verifyLocalMacScript = readText("tools/verify-local-mac.sh");
 const openSourceAuditScript = readText("tools/open-source-audit.ps1");
 const buildReleaseMacScript = readText("packaging/build-release-mac.sh");
 const buildReleaseWindowsScript = readText("packaging/build-release.ps1");
+const buildUserPackageScript = readText("packaging/build-user-package.ps1");
 const verifyInstalledPayloadScript = readText("packaging/verify-installed-payload.ps1");
 const gitignore = readText(".gitignore");
-const nativeSources = `${nativeModule}\n${nativeStorageRecoveryHeader}\n${nativeStorageRecoveryModule}\n${nativeExportProgressHeader}\n${nativeExportProgressModule}\n${nativeExportRunnerHeader}\n${nativeExportRunnerModule}`;
+const nativeSources = `${nativeModule}\n${nativeExportFrameSetHeader}\n${nativeExportFrameSetModule}\n${nativeStorageRecoveryHeader}\n${nativeStorageRecoveryModule}\n${nativeExportProgressHeader}\n${nativeExportProgressModule}\n${nativeExportRunnerHeader}\n${nativeExportRunnerModule}`;
 
 assert.deepStrictEqual(contract.recorderStates, [
   "Idle",
@@ -53,6 +63,21 @@ assert.deepStrictEqual(contract.recorderStates, [
   "Exporting",
   "Error",
 ]);
+assert.deepStrictEqual(contract.productNaming, {
+  displayName: "OK-Record",
+  repositorySlug: "OK-Record",
+  technicalSlug: "ok-record",
+  jsPanelId: "okRecordPanel",
+  pascalIdentifierPrefix: "OkRecord",
+  cppNamespace: "ok_record",
+  installIdentity: "com.badbrush.okrecord",
+  nativeAddonName: "ok-record-addon.uxpaddon",
+  exportFilePrefix: "OK-Record_timelapse_",
+});
+assert.strictEqual(manifest.id, contract.productNaming.installIdentity, "manifest install identity must stay stable and reverse-DNS compatible");
+assert.strictEqual(manifest.name, contract.productNaming.displayName, "manifest display name must use the branded product spelling");
+assert.strictEqual(manifest.addon.name, contract.productNaming.nativeAddonName, "manifest native addon name must use the technical slug");
+assert(nativeProject.includes(`<RootNamespace>${contract.productNaming.pascalIdentifierPrefix}Addon</RootNamespace>`), "native project namespace metadata must use the PascalCase product identifier");
 assert.strictEqual(contract.sessionLayout.rootDirName, "延时录制_Recordings");
 assert.strictEqual(contract.sessionLayout.timelineId, "Timeline");
 assert.strictEqual(contract.sessionLayout.framesDirName, "frames");
@@ -213,11 +238,19 @@ assert.strictEqual(updateManifest.schema, "ok-record.update-manifest.v1", "updat
 assert.strictEqual(updateManifest.version, manifest.version, "update manifest must publish the current public package version");
 assert(
   updateManifest.releasePageUrl.startsWith("https://github.com/xBADBRUSHx/OK-Record/releases/"),
-  "update manifest release page must point to OK Record GitHub Releases",
+  "update manifest release page must point to OK-Record GitHub Releases",
+);
+assert(
+  updateManifest.releasePageUrl.includes(`/v${manifest.version}`) || updateManifest.releasePageUrl.endsWith(`/${manifest.version}`),
+  "update manifest release page must include the current package version",
 );
 assert(
   updateManifest.downloadUrl.startsWith("https://github.com/xBADBRUSHx/OK-Record/releases/"),
-  "update manifest download URL must point to OK Record GitHub Releases",
+  "update manifest download URL must point to OK-Record GitHub Releases",
+);
+assert(
+  updateManifest.downloadUrl.includes(`/v${manifest.version}/`) || updateManifest.downloadUrl.includes(`/${manifest.version}/`),
+  "update manifest download URL must include the current package version",
 );
 
 assert.strictEqual(contract.commands, undefined, "shared contract must not keep retired Photoshop menu commands");
@@ -225,8 +258,9 @@ assert(
   !manifest.entryPoints.some((entryPoint) => entryPoint.type === "command"),
   "manifest must not expose Photoshop menu command entry points",
 );
-const panelEntryPoint = manifest.entryPoints.find((entryPoint) => entryPoint.type === "panel" && entryPoint.id === "okRecordPanel");
-assert(panelEntryPoint, "manifest must expose the OK Record panel entry point");
+const panelEntryPoint = manifest.entryPoints.find((entryPoint) => entryPoint.type === "panel" && entryPoint.id === contract.productNaming.jsPanelId);
+assert(panelEntryPoint, "manifest must expose the OK-Record panel entry point");
+assert.strictEqual(panelEntryPoint.label.default, contract.productNaming.displayName, "manifest panel label must use the branded product spelling");
 assert.strictEqual(panelEntryPoint.minimumSize.width, 250, "manifest panel minimum width must allow the compact narrow layout");
 assert.strictEqual(panelEntryPoint.minimumSize.height, 200, "manifest panel minimum height must allow the compact primary-action layout");
 assert(panelEntryPoint.maximumSize.height >= 2000, "manifest panel maximum height must not clip the current control surface");
@@ -270,9 +304,9 @@ assert(uxpMain.includes("togglePaintingTimer"), "UXP panel must use one painting
 assert(uxpMain.includes("handlePaintingTimerControl"), "UXP painting timer status button must route ordinary clicks and Alt-clicks through one handler");
 assert(uxpMain.includes("function endPaintingTimer"), "UXP painting timer must have an explicit ended-state transition");
 assert(uxpMain.includes("PAINTING_TIMER_END_REASON"), "UXP painting timer must use a named end reason for durable ended state");
-assert(uxpMain.includes("ended: false"), "UXP painting timer state must define ended as explicit state truth");
-assert(uxpMain.includes("ended: Boolean(state.ended)"), "UXP painting timer ended state must restore from persistence");
-assert(uxpMain.includes("ended: paintingTimerState.ended"), "UXP painting timer ended state must persist");
+assert(paintingTimerModule.includes("ended: false"), "painting timer domain must define ended as explicit state truth");
+assert(paintingTimerModule.includes("ended: Boolean(state.ended)"), "painting timer domain must restore ended state from persistence");
+assert(paintingTimerModule.includes("ended: normalized.ended"), "painting timer domain must persist ended state");
 assert(uxpMain.includes('event && event.type === "click" && event.altKey'), "UXP painting timer must reserve Alt-click for ending the timer");
 assert(uxpMain.includes("endPaintingTimer();"), "UXP painting timer Alt-click must enter the ended state");
 assert(uxpMain.includes("resetPaintingTimer({ announce: false })"), "UXP painting timer ordinary click after ended state must reset before restarting");
@@ -324,8 +358,11 @@ assert(uxpMain.includes("paintingTimerModel.armPaintingTimerState"), "UXP painti
 assert(uxpMain.includes("paintingTimerModel.recordPaintingActivityState"), "UXP painting timer activity must use the domain activity transition");
 assert(uxpMain.includes("paintingTimerModel.finishActiveSegment"), "UXP painting timer segment finish must use the domain transition");
 assert(uxpMain.includes("paintingTimerModel.settleRestoredState"), "UXP painting timer restore must use the domain settle transition");
-assert(uxpMain.includes(`PAINTING_TIMER_STATE_SCHEMA = "${contract.activityTimer.schema}"`), "UXP painting timer state schema must match the shared contract");
-assert(uxpMain.includes(`PAINTING_TIMER_STATE_FILENAME = "${contract.activityTimer.stateFilename}"`), "UXP painting timer state filename must match the shared contract");
+assert(paintingTimerModule.includes(`PAINTING_TIMER_STATE_SCHEMA = "${contract.activityTimer.schema}"`), "painting timer domain schema must match the shared contract");
+assert(paintingTimerModule.includes(`PAINTING_TIMER_STATE_FILENAME = "${contract.activityTimer.stateFilename}"`), "painting timer domain filename must match the shared contract");
+assert(uxpMain.includes("PAINTING_TIMER_STATE_FILENAME = paintingTimerModel.PAINTING_TIMER_STATE_FILENAME"), "UXP shell must route timer persistence filename through the painting-timer domain");
+assert(uxpMain.includes("paintingTimerModel.parsePersistedPaintingTimerState"), "UXP shell must parse persisted timer state through the painting-timer domain");
+assert(uxpMain.includes("paintingTimerModel.createPersistedPaintingTimerState"), "UXP shell must create timer persistence snapshots through the painting-timer domain");
 assert(!uxpMain.includes(`PANEL_SETTINGS_SCHEMA = "${contract.panelSettings.schema}"`), "UXP shell must not duplicate the panel settings schema literal");
 assert(uxpMain.includes("PANEL_SETTINGS_FILENAME = settingsModel.PANEL_SETTINGS_FILENAME"), "UXP panel settings filename must route through the settings model domain");
 assert(uxpMain.includes(contract.panelSettings.frameOutputDirField), "UXP panel settings must persist the manual OK-Record project output directory");
@@ -360,11 +397,13 @@ assert(uxpMain.includes("exportHoldSeconds"), "UXP panel settings must persist p
 assert(!uxpMain.includes('item.textContent = preset.storageFormat === "png"'), "UXP compression dropdown must not expose JPEG/PNG implementation text");
 assert(!uxpMain.includes("preset.label} JPEG ${preset.jpegQuality}"), "UXP compression dropdown must not expose JPEG quality numbers");
 assert(!uxpMain.includes("preset.label} ${preset.maxWidth}px"), "UXP resolution dropdown must not expose pixel widths");
-assert(uxpMain.includes("FRAME_QUALITY_PRESETS"), "UXP panel must own frame quality presets");
-assert(uxpMain.includes('label: "低", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 60'), "UXP quality presets must include JPEG 60 low quality");
-assert(uxpMain.includes('label: "默认", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 80'), "UXP quality presets must include JPEG 80 default quality");
-assert(uxpMain.includes('label: "高", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 92'), "UXP quality presets must include JPEG 92 high quality");
-assert(uxpMain.includes('label: "无损", storageFormat: "png", frameExtension: ".png", jpegQuality: 0'), "UXP quality presets must include PNG lossless storage");
+assert(settingsModelModule.includes("FRAME_QUALITY_PRESETS"), "settings model must own frame quality storage metadata");
+assert(uxpMain.includes("settingsModel.FRAME_QUALITY_PRESETS.map"), "UXP panel must derive frame quality storage metadata from the settings model domain");
+assert(uxpMain.includes("FRAME_QUALITY_PRESET_LABELS"), "UXP panel may own display labels for frame quality presets");
+assert(!uxpMain.includes('storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 60'), "UXP shell must not duplicate JPEG 60 quality metadata");
+assert(!uxpMain.includes('storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 80'), "UXP shell must not duplicate JPEG 80 quality metadata");
+assert(!uxpMain.includes('storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 92'), "UXP shell must not duplicate JPEG 92 quality metadata");
+assert(!uxpMain.includes('storageFormat: "png", frameExtension: ".png", jpegQuality: 0'), "UXP shell must not duplicate PNG lossless quality metadata");
 assert(uxpMain.includes("frameQualityPreset"), "UXP panel settings and capture metadata must carry the frame quality preset");
 assert(uxpMain.includes("createFrameStorageMetadata"), "UXP capture must translate the quality preset into native storage metadata");
 assert(uxpMain.includes('require("./services/native-bridge")'), "UXP native calls must route through the native bridge service");
@@ -458,14 +497,15 @@ assert(uxpMain.includes("SECONDS_PER_MINUTE = 60"), "UXP interval UI must split 
 assert(uxpMain.includes("MIN_INTERVAL_SECONDS = MIN_INTERVAL_MINUTES * SECONDS_PER_MINUTE"), "UXP interval UI must derive its minimum seconds from the settings model interval");
 assert(uxpMain.includes("Math.max(MIN_INTERVAL_SECONDS"), "UXP interval input must clamp manually entered zero back to the minimum");
 assert(uxpMain.includes("DEFAULT_CAPTURE_ONLY_WHEN_CHANGED = settingsModel.DEFAULT_CAPTURE_ONLY_WHEN_CHANGED"), "UXP capture policy default must route through the settings model domain");
-assert(uxpMain.includes("DOCUMENT_CHANGE_EVENTS"), "UXP must declare explicit Photoshop document change events");
+assert(recorderSchedulerModule.includes("DOCUMENT_CHANGE_EVENTS"), "scheduler owner must declare explicit Photoshop document change events");
+assert(uxpMain.includes("DOCUMENT_CHANGE_EVENTS = recorderScheduler.DOCUMENT_CHANGE_EVENTS"), "UXP shell must consume Photoshop document change events from the scheduler owner");
 assert(uxpMain.includes('DOCUMENT_CLOSE_EVENT = "close"'), "UXP must name the Photoshop document close event");
 assert(uxpMain.includes("queueDocumentCloseRecordingCheck"), "UXP document close handling must re-check the active document context before stopping recording");
 assert(uxpMain.includes("isActiveRecordingContextStillCurrent"), "UXP document close handling must not stop recording when an unrelated document closes");
 assert(uxpMain.includes("validateReference"), "UXP document close handling must validate the locked Photoshop document reference before stopping recording");
 assert(uxpMain.includes("stopRecordingAfterDocumentClose"), "UXP document close handling must stop the recording runtime immediately");
 for (const eventName of contract.scheduler.documentChangeEvents) {
-  assert(uxpMain.includes(`"${eventName}"`), `UXP document change events must include ${eventName}`);
+  assert(recorderSchedulerModule.includes(`"${eventName}"`), `scheduler document change events must include ${eventName}`);
 }
 assert(uxpMain.includes("action.addNotificationListener"), "UXP must register explicit Photoshop document change events");
 assert(uxpMain.includes("markDocumentDirty"), "UXP must mark recording sessions dirty from document events");
@@ -495,10 +535,14 @@ assert(nativeModule.includes("MIN_EXPORT_MAX_WIDTH = 16"), "native export max-wi
 assert(nativeModule.includes("MAX_EXPORT_MAX_WIDTH = 16384"), "native export max-width maximum must match the shared export contract");
 assert(nativeExportRunnerHeader.includes("struct NativeFfmpegExportRequest"), "native export must model FFmpeg runner inputs once");
 assert(nativeExportRunnerHeader.includes("struct NativeFfmpegExportResult"), "native export must model FFmpeg runner outputs once");
+assert(nativeExportFrameSetHeader.includes("struct TimelineExportFrameSetRequest"), "native export frame-set owner must model timeline discovery inputs once");
+assert(nativeExportFrameSetHeader.includes("struct SequenceExportFrameSetRequest"), "native export frame-set owner must model directory discovery inputs once");
+assert(nativeExportFrameSetModule.includes("BuildTimelineExportFrameSet"), "native export frame-set owner must build timeline frame sets");
+assert(nativeExportFrameSetModule.includes("BuildSequenceExportFrameSet"), "native export frame-set owner must build directory frame sets");
 assert(nativeExportRunnerModule.includes("RunNativeFfmpegExport"), "native export must route timeline and directory exports through one FFmpeg runner");
 assert(nativeModule.includes("CreateNativeExportResultValue"), "native export must map FFmpeg runner results through one result builder");
-assert(nativeModule.includes("const ExportFrameSet frameSet = BuildExportFrameSet(request);"), "native timeline export must keep timeline frame discovery separate");
-assert(nativeModule.includes("const ExportFrameSet frameSet = BuildSequenceExportFrameSet(request);"), "native directory export must keep directory frame discovery separate");
+assert(nativeModule.includes("const ExportFrameSet frameSet = BuildTimelineExportFrameSet(frameSetRequest);"), "native timeline export must route through the frame-set discovery owner");
+assert(nativeModule.includes("const ExportFrameSet frameSet = BuildSequenceExportFrameSet(frameSetRequest);"), "native directory export must route through the frame-set discovery owner");
 assert.strictEqual(
   (nativeExportRunnerModule.match(/RunProcessToLog\(ffmpegPath, command, logPath\)/g) || []).length,
   1,
@@ -517,6 +561,8 @@ assert(uxpMain.includes("张序列帧"), "UXP status must preview sequence frame
 assert(uxpMain.includes("handleHoldSecondsChange"), "UXP must let per-frame hold duration drive target duration");
 assert(uxpMain.includes("holdSeconds: exportProfile.holdSeconds"), "UXP must pass the calculated hold seconds to native export");
 assert(statusMessagesModule.includes("buildExportSuccessMessages"), "UXP status message module must expose export-success mapping");
+assert(nativeExportRunnerModule.includes(`"${contract.productNaming.exportFilePrefix}"`), "native exports must use the branded OK-Record file prefix");
+assert(!nativeExportRunnerModule.includes(`stage_${"timelapse"}`), "native exports must not keep the retired Stage-era file prefix");
 assert(uxpMain.includes("lastExportProgress"), "UXP recorder state must retain the last export progress summary");
 assert(uxpMain.includes("lastExportStatus"), "UXP recorder state must retain the last export UI status");
 assert(uxpMain.includes("getExportButtonViewState"), "UXP export button state must be derived in one view-state helper");
@@ -529,7 +575,7 @@ assert(uxpMain.includes("menuItems"), "UXP panel must register a panel flyout me
 assert(uxpMain.includes("文档_Documentation"), "UXP panel flyout menu must expose local documentation");
 assert(uxpMain.includes("invokeMenu"), "UXP panel flyout menu must handle documentation menu clicks");
 assert(uxpMain.includes("shell.openPath"), "UXP must open the export folder through the UXP shell API");
-assert(localDocumentation.includes("<title>OK Record 使用说明</title>"), "local documentation must expose the requested user-facing title");
+assert(localDocumentation.includes("<title>OK-Record 使用说明</title>"), "local documentation must expose the requested user-facing title");
 assert(
   !fs.existsSync(path.join(repoRoot, "uxp", "docs", "Documentation_使用说明.html")),
   "UXP source tree must not keep a duplicate packaged documentation HTML source",
@@ -537,7 +583,7 @@ assert(
 assert(!fs.existsSync(path.join(repoRoot, "uxp", "docs", "images")), "UXP source tree must not keep duplicate documentation images");
 assert(localDocumentation.includes('data-language-choice="zh"'), "local documentation must expose an in-page Chinese language switch");
 assert(localDocumentation.includes('data-language-choice="en"'), "local documentation must expose an in-page English language switch");
-assert(localDocumentation.includes("OK Record User Guide"), "local documentation must include English user-guide copy");
+assert(localDocumentation.includes("OK-Record User Guide"), "local documentation must include English user-guide copy");
 assert(localDocumentation.includes("ok-record-doc-language"), "local documentation must remember the selected documentation language locally");
 assert(localDocumentation.includes("4. 绘画计时"), "local documentation must follow the panel order with painting timer first");
 assert(localDocumentation.includes("4. Painting Timer"), "local documentation must translate the painting timer section");
@@ -573,7 +619,7 @@ assert(localDocumentation.includes("录制失败、手动采样失败、导出�
 assert(localDocumentation.includes("暂停录制后可以点击"), "local documentation must describe choosing the OK-Record save folder while paused");
 assert(localDocumentation.includes("正在录制或正在写入时不能切换保存目录。"), "local documentation must describe when the save folder cannot be changed");
 assert(localDocumentation.includes("导出完成或导出失败都会弹出提醒窗口。"), "local documentation must describe export completion and failure dialogs");
-assert(!localDocumentation.includes("如果 Photoshop 文档也还没有保存，录制文件会放到 OK Record 的默认路径。"), "local documentation must not describe plugin-data recording fallback for unsaved documents");
+assert(!localDocumentation.includes("如果 Photoshop 文档也还没有保存，录制文件会放到 OK-Record 的默认路径。"), "local documentation must not describe plugin-data recording fallback for unsaved documents");
 assert(localDocumentation.includes("A saved PSD/PSB can keep recording even when the current canvas has unsaved edits."), "local documentation must translate the saved-but-dirty recording rule");
 assert(localDocumentation.includes("If the document has never been saved to a local folder"), "local documentation must translate the never-saved document block");
 assert(localDocumentation.includes("a manual choice applies only to the current PSD/PSB"), "local documentation must translate document-scoped manual project folders");
@@ -720,7 +766,29 @@ assert(uxpMain.includes("uxp.versions.plugin"), "UXP update check must compare a
 assert(uxpMain.includes("compareVersionStrings(updateInfo.version, currentVersion)"), "UXP update check must compare remote and installed versions before showing a notice");
 assert(uxpMain.includes("openUpdateDownloadPage"), "UXP must expose a download-page action for update reminders");
 assert(uxpMain.includes("shell.openExternal"), "UXP must open the GitHub Release download page through the UXP shell external-url API");
-assert(uxpMain.includes("UPDATE_RELEASES_URL_PREFIX"), "UXP update manifest URLs must stay constrained to OK Record GitHub Releases");
+assert(uxpMain.includes("UPDATE_RELEASES_URL_PREFIX"), "UXP update manifest URLs must stay constrained to OK-Record GitHub Releases");
+{
+  const brandedSources = [
+    readme,
+    readmeEnglish,
+    agentsDocs,
+    contributingDocs,
+    architectureDocs,
+    localDocumentation,
+    packageInstallNotes,
+    releaseNotes,
+    runtimeSmokeChecklist,
+    macBuildDocs,
+    macBuildChineseDocs,
+    uxpMain,
+    statusMessagesModule,
+    nativeExportRunnerModule,
+    buildReleaseWindowsScript,
+  ].join("\n");
+  assert(!brandedSources.includes(`OK ${"Record"}`), "user-facing docs and runtime copy must not use the old space-separated product spelling");
+  assert(agentsDocs.includes("`OK-Record`"), "AGENTS.md must document the branded product spelling");
+  assert(architectureDocs.includes("Product Naming"), "Architecture.md must document the product naming contract");
+}
 assert(buildReleaseWindowsScript.includes('"docs\\index.html"'), "Windows package must include the root documentation entry");
 assert(buildReleaseWindowsScript.includes('"domain\\recording-context.js"'), "Windows package must include the recording-context domain module");
 assert(buildReleaseWindowsScript.includes('$documentationImageRoot = Join-Path $repoRoot "docs\\images"'), "Windows package must read documentation images from the root docs source");
@@ -729,6 +797,16 @@ assert(buildReleaseWindowsScript.includes('"docs\\images\\$($_.Name)"'), "Window
 assert(buildReleaseWindowsScript.includes("OK-Record-User-Guide.html"), "Windows package must include a root-level user guide HTML copy for extracted packages");
 assert(buildReleaseWindowsScript.includes('.Replace("images/", "docs/images/")'), "Windows package root-level user guide must resolve packaged image paths");
 assert(buildReleaseMacScript.includes('"domain/recording-context.js"'), "macOS package must include the recording-context domain module");
+assert(buildReleaseWindowsScript.includes("updateManifest.releaseDate"), "Windows release build must derive the default sealed date from docs/update.json");
+assert(buildReleaseMacScript.includes('fs.readFileSync("docs/update.json","utf8")'), "macOS release build must derive the default sealed date from docs/update.json");
+assert(buildUserPackageScript.includes("OK-Record.ccx"), "local user-package builder must include the lightweight installer");
+assert(buildUserPackageScript.includes("OK-Record_with-ffmpeg.ccx"), "local user-package builder must include the bundled-FFmpeg installer");
+assert(buildUserPackageScript.includes('OK-Record_v${version}_User-Package'), "local user-package builder must delimit the version variable in the package name");
+assert(buildUserPackageScript.includes("README.txt"), "local user-package builder must include a user-facing README");
+assert(buildUserPackageScript.includes("OK-Record-User-Guide.html"), "local user-package builder must include the local user guide");
+assert(packageInstallNotes.includes("build-user-package.ps1"), "package install notes must route local user-package creation to the user-package builder");
+assert(!packageInstallNotes.includes('-SealedDate "2026-06-02"'), "package install notes must not hard-code an old sealed date");
+assert(!readme.includes('-SealedDate "2026-06-02"'), "README build commands must not hard-code an old sealed date");
 assert(!uxpMain.includes("ok-record-timer-time"), "UXP painting timer must not keep the split time node");
 assert(uxpMain.includes("setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);"), "UXP recording button must remain enabled while active so busy capture states do not gray out the stop control");
 assert(!uxpMain.includes("；Alt+点击清空序列帧"), "UXP recording button must not expose the old Alt-click clear-frames affordance");
@@ -778,8 +856,8 @@ assert(nativeModule.includes("write_step_frame"), "native addon must expose the 
 assert(nativeModule.includes("scan_recordings"), "native addon must expose the frame directory scanner");
 assert(nativeModule.includes("scan_sequence"), "native addon must expose the image-sequence scanner");
 assert(nativeModule.includes("CollectExportableSequenceFrames(framesPath)"), "native sequence scanner must use the shared exportable-sequence collection path");
-assert(nativeModule.includes("Sequence directory contains mixed frame naming or image formats"), "native sequence scanner must reject mixed image-sequence naming");
-assert(nativeModule.includes("Sequence frame numbers are not contiguous"), "native sequence scanner must reject non-contiguous image-sequence numbering");
+assert(nativeExportFrameSetModule.includes("Sequence directory contains mixed frame naming or image formats"), "native sequence scanner must reject mixed image-sequence naming");
+assert(nativeExportFrameSetModule.includes("Sequence frame numbers are not contiguous"), "native sequence scanner must reject non-contiguous image-sequence numbering");
 assert(nativeModule.includes("export_session"), "native addon must expose the FFmpeg exporter");
 assert(nativeModule.includes("export_sequence"), "native addon must expose the arbitrary sequence FFmpeg exporter");
 assert(nativeModule.includes('#include "storage_recovery.h"'), "native addon must consume the shared storage recovery core");
@@ -791,6 +869,7 @@ assert(nativeStorageRecoveryHeader.includes("ValidateCommittedFrameRecord"), "na
 assert(nativeStorageRecoveryModule.includes("ValidateCommittedFrameRecord(frame);"), "native committed-frame collection must validate frame and metadata consistency before recovery/export");
 assert(nativeExportProgressHeader.includes("ParseFfmpegProgressText"), "native export progress header must expose the parser owner path");
 assert(nativeExportProgressModule.includes("ParseFfmpegProgressFile"), "native export progress module must parse FFmpeg progress files");
+assert(nativeProject.includes("..\\src\\export_frame_set.cpp"), "native build must compile the export frame-set discovery owner");
 assert(nativeProject.includes("..\\src\\export_progress.cpp"), "native build must compile the export progress parser");
 assert(nativeProject.includes("..\\src\\export_runner.cpp"), "native build must compile the shared export runner");
 assert(nativeProject.includes("..\\src\\storage_recovery.cpp"), "native build must compile the storage recovery core");
@@ -799,6 +878,7 @@ assert(buildNativeMacScript.includes('UXP_ARCH="arm64"'), "macOS native build mu
 assert(buildNativeMacScript.includes('UXP_ARCH="x64"'), "macOS native build must map x86_64 to the UXP x64 payload folder");
 assert(buildNativeMacScript.includes("uxp/mac/$UXP_ARCH"), "macOS native build must write into the UXP mac payload root");
 assert(buildNativeMacScript.includes("-framework ImageIO"), "macOS native build must link ImageIO for JPEG/PNG encoding");
+assert(buildNativeMacScript.includes("native/src/export_frame_set.cpp"), "macOS native build must compile the export frame-set discovery owner");
 assert(buildNativeMacScript.includes("native/src/export_runner.cpp"), "macOS native build must compile the shared export runner");
 assert(verifyLocalWindowsScript.includes("uxp\\services\\native-bridge.js"), "Windows local verification must syntax-check the native bridge");
 assert(verifyLocalWindowsScript.includes("tests\\native-bridge.test.js"), "Windows local verification must run the native bridge behavior test");
@@ -844,6 +924,11 @@ assert(gitignore.includes("延时录制_Recordings/"), "repo must ignore local r
 assert(gitignore.includes("步骤图_Steps/"), "repo must ignore local manual step-image roots");
 assert(openSourceAuditScript.includes("延时录制_Recordings"), "open-source audit must block local recording output roots");
 assert(openSourceAuditScript.includes("步骤图_Steps"), "open-source audit must block local manual step-image roots");
+assert(openSourceAuditScript.includes("[switch]$PublicUpload"), "open-source audit must expose a public-upload mode for filtered source releases");
+assert(openSourceAuditScript.includes("^AGENTS\\.md$"), "public-upload audit must block local collaboration docs");
+assert(openSourceAuditScript.includes("^docs/mac-build\\.md$"), "public-upload audit must block scoped development docs");
+assert(openSourceAuditScript.includes("\\.(ccx|zxp|psd|psb|psdc|mp4|mov|avi|dll|exe|zip)$"), "open-source audit must block zip release packages");
+assert(gitignore.includes("*.zip"), "repo must ignore local zip release/user packages");
 assert(verifyInstalledPayloadScript.includes("bundledFfmpeg"), "installed-payload verification must cover bundled FFmpeg payload entries");
 assert(verifyInstalledPayloadScript.includes("bundledFfmpegFilesVerified"), "installed-payload verification summary must report bundled FFmpeg verification");
 assert(packageInstallNotes.includes("docs/index.html"), "package install notes must list packaged local documentation");
@@ -852,9 +937,9 @@ assert(packageInstallNotes.includes("OK-Record-User-Guide.html"), "package insta
 assert(securityPolicy.includes("does not commit FFmpeg"), "security policy must distinguish source repository contents from release package variants");
 assert(securityPolicy.includes("no-setup release package may bundle FFmpeg"), "security policy must allow the documented bundled-FFmpeg release variant");
 assert(macBuildDocs.includes("Authority:"), "macOS build docs must keep a scoped-doc authority header");
-assert(nativeModule.includes("GetRecordingsRootPath(request.outputDir)"), "native writer/exporter must decode UXP outputDir through the recording-root helper before filesystem use");
+assert(nativeSources.includes("GetRecordingsRootPath(request.outputDir)"), "native writer/exporter must decode UXP outputDir through the recording-root helper before filesystem use");
 assert(nativeModule.includes("GetRecordingsRootPath(outputDir)"), "native scanner must decode UXP outputDir through the recording-root helper before filesystem use");
-assert(nativeModule.includes("PathFromUtf8(outputDir) / PathFromUtf8(RECORDINGS_ROOT_DIR_NAME)"), "native recording-root helper must decode UXP outputDir and the bilingual root as UTF-8 before filesystem use");
+assert(nativeExportFrameSetModule.includes("PathFromUtf8(outputDir) / PathFromUtf8(kRecordingsRootDirName)"), "native recording-root helper must decode UXP outputDir and the bilingual root as UTF-8 before filesystem use");
 assert(nativeSources.includes("PathToUtf8"), "native addon must return filesystem paths to UXP as UTF-8 strings");
 assert(!nativeSources.includes("fs::path(request.outputDir)"), "native addon must not construct Windows filesystem paths directly from UTF-8 outputDir bytes");
 assert(!nativeSources.includes("fs::path(outputDir)"), "native scanner must not construct Windows filesystem paths directly from UTF-8 outputDir bytes");
@@ -871,10 +956,10 @@ assert(nativeSources.includes("BuildManifestJsonFromCommittedFrames"), "native w
 assert(nativeSources.includes("RebuildManifestFromCommittedFrames"), "native recovery scan must rebuild manifest.json from committed metadata");
 assert(nativeSources.includes("metadataSidecarsAreAuthority"), "native manifest must declare metadata sidecars as the committed-frame authority");
 assert(!nativeSources.includes("frameFilesAreAuthority"), "native manifest must not keep frame-file-only authority");
-assert(nativeModule.includes(`RECORDINGS_ROOT_DIR_NAME = u8"${contract.sessionLayout.rootDirName}"`), "native writer must use the shared bilingual recording root");
+assert(nativeExportFrameSetHeader.includes(`kRecordingsRootDirName = u8"${contract.sessionLayout.rootDirName}"`), "native writer must use the shared bilingual recording root");
 assert(nativeSources.includes(contract.frame.filenamePrefix), "native writer must use numbered frame names");
 assert(nativeSources.includes(contract.stepFrame.filenamePrefix), "native step writer must use step frame names");
-assert(nativeSources.includes("STEP_FRAME_INDEX_DIGITS = 3"), "native step writer must use three-digit step frame names");
+assert(nativeExportFrameSetHeader.includes("kStepFrameIndexDigits = 3"), "native step writer must use three-digit step frame names");
 assert(nativeSources.includes(contract.frame.defaultStorageFormat), "native writer must use the shared default encoded frame storage format");
 assert(nativeSources.includes(contract.frame.defaultExtension), "native writer must write the shared default encoded frame extension");
 assert(nativeSources.includes(contract.frame.pngStorageFormat), "native writer must recognize PNG frame storage");

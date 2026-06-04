@@ -61,12 +61,16 @@ const CAPTURE_RESOLUTION_PRESETS = Object.freeze(settingsModel.CAPTURE_RESOLUTIO
   label: CAPTURE_RESOLUTION_PRESET_LABELS[preset.id] || preset.id,
 })));
 const DEFAULT_FRAME_QUALITY_PRESET_ID = settingsModel.DEFAULT_FRAME_QUALITY_PRESET_ID;
-const FRAME_QUALITY_PRESETS = Object.freeze([
-  { id: "low", label: "低", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 60 },
-  { id: DEFAULT_FRAME_QUALITY_PRESET_ID, label: "默认", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 80 },
-  { id: "high", label: "高", storageFormat: "jpeg", frameExtension: ".jpg", jpegQuality: 92 },
-  { id: "lossless", label: "无损", storageFormat: "png", frameExtension: ".png", jpegQuality: 0 },
-]);
+const FRAME_QUALITY_PRESET_LABELS = Object.freeze({
+  low: "低",
+  [DEFAULT_FRAME_QUALITY_PRESET_ID]: "默认",
+  high: "高",
+  lossless: "无损",
+});
+const FRAME_QUALITY_PRESETS = Object.freeze(settingsModel.FRAME_QUALITY_PRESETS.map((preset) => ({
+  ...preset,
+  label: FRAME_QUALITY_PRESET_LABELS[preset.id] || preset.id,
+})));
 const DEFAULT_EXPORT_CRF = exportProfileModel.DEFAULT_EXPORT_CRF;
 const MIN_EXPORT_DURATION_SECONDS = exportProfileModel.MIN_EXPORT_DURATION_SECONDS;
 const MAX_EXPORT_DURATION_SECONDS = exportProfileModel.MAX_EXPORT_DURATION_SECONDS;
@@ -78,8 +82,7 @@ const MIN_PAINTING_TIMER_TIMEOUT_SECONDS = paintingTimerModel.MIN_IDLE_TIMEOUT_S
 const MAX_PAINTING_TIMER_TIMEOUT_SECONDS = paintingTimerModel.MAX_IDLE_TIMEOUT_SECONDS;
 const PAINTING_TIMER_IDLE_STOP_REASON = paintingTimerModel.IDLE_STOP_REASON;
 const PAINTING_TIMER_END_REASON = paintingTimerModel.MANUAL_END_REASON;
-const PAINTING_TIMER_STATE_SCHEMA = "ok-record.activity-timer.v1";
-const PAINTING_TIMER_STATE_FILENAME = "activity-timer.json";
+const PAINTING_TIMER_STATE_FILENAME = paintingTimerModel.PAINTING_TIMER_STATE_FILENAME;
 const PANEL_SETTINGS_FILENAME = settingsModel.PANEL_SETTINGS_FILENAME;
 const RECORDINGS_ROOT_DIR_NAME = pathPolicy.RECORDINGS_ROOT_DIR_NAME;
 const DEFAULT_STEP_OUTPUT_DIR_NAME = pathPolicy.DEFAULT_STEP_OUTPUT_DIR_NAME;
@@ -99,43 +102,7 @@ const DEFAULT_CAPTURE_ONLY_WHEN_CHANGED = settingsModel.DEFAULT_CAPTURE_ONLY_WHE
 const UNSAVED_DOCUMENT_RECORDING_MESSAGE = recordingContext.UNSAVED_DOCUMENT_RECORDING_MESSAGE;
 const DOCUMENT_CONTEXT_CHANGED_MESSAGE = recordingContext.DOCUMENT_CONTEXT_CHANGED_MESSAGE;
 const DOCUMENT_CLOSE_EVENT = "close";
-const DOCUMENT_CHANGE_EVENTS = Object.freeze([
-  "paint",
-  "draw",
-  "set",
-  "make",
-  "delete",
-  "move",
-  "transform",
-  "paste",
-  "pasteInto",
-  "pasteOutside",
-  "cut",
-  "clearEvent",
-  "crop",
-  "canvasSize",
-  "imageSize",
-  "duplicate",
-  "mergeLayersNew",
-  "mergeLayers",
-  "mergeVisible",
-  "flattenImage",
-  "rasterize",
-  "rasterizeTypeLayer",
-  "placeEvent",
-  "convertMode",
-  "applyStyle",
-  "stroke",
-  "gradientClassEvent",
-  "hueSaturation",
-  "levels",
-  "curves",
-  "invert",
-  "undoEvent",
-  "revert",
-  "open",
-  DOCUMENT_CLOSE_EVENT,
-]);
+const DOCUMENT_CHANGE_EVENTS = recorderScheduler.DOCUMENT_CHANGE_EVENTS;
 const RECORDER_STATES = recorderDomain.RECORDER_STATES;
 const EXPORT_STATUSES = recorderDomain.EXPORT_STATUSES;
 
@@ -384,7 +351,7 @@ async function captureNow() {
 
     const result = await captureStepFrame({
       label: "手动采样",
-      commandName: "OK Record 手动采样",
+      commandName: "OK-Record 手动采样",
       finalState: () => {
         if (recordingPauseRequested) {
           return RECORDER_STATES.paused;
@@ -927,7 +894,7 @@ async function openExportFolder() {
       throw new Error("UXP shell.openPath 不可用");
     }
 
-    const result = await shell.openPath(folderPath, "打开 OK Record 导出目录。");
+    const result = await shell.openPath(folderPath, "打开 OK-Record 导出目录。");
     if (result) {
       throw new Error(result);
     }
@@ -955,7 +922,7 @@ async function getLocalDocumentationPath() {
   const pluginFolder = await localFileSystem.getPluginFolder();
   const pluginRootPath = localFileSystem.getNativePath(pluginFolder);
   if (!pluginRootPath) {
-    throw new Error("无法解析 OK Record 使用说明路径");
+    throw new Error("无法解析 OK-Record 使用说明路径");
   }
 
   return pathPolicy.joinNativePath(
@@ -972,7 +939,7 @@ async function openLocalDocumentation() {
       throw new Error("UXP shell.openPath 不可用");
     }
 
-    const result = await shell.openPath(documentationPath, "打开 OK Record 使用说明。");
+    const result = await shell.openPath(documentationPath, "打开 OK-Record 使用说明。");
     if (result) {
       throw new Error(result);
     }
@@ -1024,7 +991,7 @@ function normalizeUpdateUrl(url, fieldName) {
     return "";
   }
   if (!value.startsWith(UPDATE_RELEASES_URL_PREFIX)) {
-    throw new Error(`更新清单中的 ${fieldName} 不是 OK Record GitHub Release 地址`);
+    throw new Error(`更新清单中的 ${fieldName} 不是 OK-Record GitHub Release 地址`);
   }
   return value;
 }
@@ -1129,7 +1096,7 @@ async function openUpdateDownloadPage() {
       throw new Error("UXP shell.openExternal 不可用");
     }
 
-    const result = await shell.openExternal(url, "打开 OK Record 下载页。");
+    const result = await shell.openExternal(url, "打开 OK-Record 下载页。");
     if (result) {
       throw new Error(result);
     }
@@ -1226,7 +1193,7 @@ async function openFrameOutputDir() {
       throw new Error("UXP shell.openPath 不可用");
     }
 
-    const result = await shell.openPath(folderPath, "打开 OK Record 序列帧目录。");
+    const result = await shell.openPath(folderPath, "打开 OK-Record 序列帧目录。");
     if (result) {
       throw new Error(result);
     }
@@ -1253,7 +1220,7 @@ async function openStepOutputDir() {
       throw new Error("UXP shell.openPath 不可用");
     }
 
-    const result = await shell.openPath(folderPath, "打开 OK Record 步骤图目录。");
+    const result = await shell.openPath(folderPath, "打开 OK-Record 步骤图目录。");
     if (result) {
       throw new Error(result);
     }
@@ -1353,7 +1320,7 @@ async function runScheduledCapture(label, options) {
 
     await captureFrame({
       label,
-      commandName: "OK Record 定时采样",
+      commandName: "OK-Record 定时采样",
       finalState: getRecordingFinalStateAfterCapture,
     });
 
@@ -2701,7 +2668,7 @@ async function restorePaintingTimerState() {
     return null;
   }
 
-  const persistedState = parsePersistedPaintingTimerState(text);
+  const persistedState = paintingTimerModel.parsePersistedPaintingTimerState(text);
   paintingTimerState = paintingTimerModel.settleRestoredState(persistedState, Date.now());
   updatePaintingTimerInputs();
   if (paintingTimerState.enabled) {
@@ -2718,39 +2685,6 @@ async function restorePaintingTimerState() {
   return paintingTimerState;
 }
 
-function parsePersistedPaintingTimerState(text) {
-  const data = JSON.parse(text);
-  if (!data || data.schema !== PAINTING_TIMER_STATE_SCHEMA || !data.state) {
-    throw new Error("绘画计时状态 schema 非预期");
-  }
-
-  const defaults = createInitialPaintingTimerState();
-  const state = data.state;
-  return {
-    ...defaults,
-    enabled: Boolean(state.enabled),
-    active: Boolean(state.active),
-    ended: Boolean(state.ended),
-    idleTimeoutSeconds: clampNumber(
-      state.idleTimeoutSeconds,
-      DEFAULT_PAINTING_TIMER_TIMEOUT_SECONDS,
-      MIN_PAINTING_TIMER_TIMEOUT_SECONDS,
-      MAX_PAINTING_TIMER_TIMEOUT_SECONDS,
-    ),
-    accumulatedSeconds: Math.max(0, toFiniteNumber(state.accumulatedSeconds, 0)),
-    activeStartedAtMs: Math.max(0, toFiniteNumber(state.activeStartedAtMs, 0)),
-    idleDeadlineAtMs: Math.max(0, toFiniteNumber(state.idleDeadlineAtMs, 0)),
-    startedAt: typeof state.startedAt === "string" ? state.startedAt : "",
-    stoppedAt: typeof state.stoppedAt === "string" ? state.stoppedAt : "",
-    lastActivityAt: typeof state.lastActivityAt === "string" ? state.lastActivityAt : "",
-    idleDeadlineAt: typeof state.idleDeadlineAt === "string" ? state.idleDeadlineAt : "",
-    eventCount: Math.max(0, Math.floor(toFiniteNumber(state.eventCount, 0))),
-    lastEventName: typeof state.lastEventName === "string" ? state.lastEventName : "",
-    lastStopReason: typeof state.lastStopReason === "string" ? state.lastStopReason : "",
-    lastError: "",
-  };
-}
-
 function queuePersistPaintingTimerState() {
   const snapshot = createPersistedPaintingTimerState();
   paintingTimerPersistPromise = paintingTimerPersistPromise
@@ -2763,26 +2697,11 @@ function queuePersistPaintingTimerState() {
 }
 
 function createPersistedPaintingTimerState() {
-  return {
-    schema: PAINTING_TIMER_STATE_SCHEMA,
-    savedAt: new Date().toISOString(),
-    state: {
-      enabled: paintingTimerState.enabled,
-      active: paintingTimerState.active,
-      ended: paintingTimerState.ended,
-      idleTimeoutSeconds: paintingTimerState.idleTimeoutSeconds,
-      accumulatedSeconds: getPersistedPaintingTimerAccumulatedSeconds(),
-      activeStartedAtMs: paintingTimerState.active ? paintingTimerState.activeStartedAtMs : 0,
-      idleDeadlineAtMs: paintingTimerState.active ? paintingTimerState.idleDeadlineAtMs : 0,
-      startedAt: paintingTimerState.startedAt,
-      stoppedAt: paintingTimerState.stoppedAt,
-      lastActivityAt: paintingTimerState.lastActivityAt,
-      idleDeadlineAt: paintingTimerState.active ? paintingTimerState.idleDeadlineAt : "",
-      eventCount: paintingTimerState.eventCount,
-      lastEventName: paintingTimerState.lastEventName,
-      lastStopReason: paintingTimerState.lastStopReason,
-    },
-  };
+  return paintingTimerModel.createPersistedPaintingTimerState(
+    paintingTimerState,
+    new Date().toISOString(),
+    getPersistedPaintingTimerAccumulatedSeconds(),
+  );
 }
 
 function getPersistedPaintingTimerAccumulatedSeconds() {

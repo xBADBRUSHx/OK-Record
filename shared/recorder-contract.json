@@ -1,5 +1,16 @@
 {
   "schema": "ok-record.recorder-contract.v1",
+  "productNaming": {
+    "displayName": "OK-Record",
+    "repositorySlug": "OK-Record",
+    "technicalSlug": "ok-record",
+    "jsPanelId": "okRecordPanel",
+    "pascalIdentifierPrefix": "OkRecord",
+    "cppNamespace": "ok_record",
+    "installIdentity": "com.badbrush.okrecord",
+    "nativeAddonName": "ok-record-addon.uxpaddon",
+    "exportFilePrefix": "OK-Record_timelapse_"
+  },
   "recorderStates": [
     "Idle",
     "Armed",

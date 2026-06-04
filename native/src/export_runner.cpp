@@ -301,7 +301,7 @@ fs::path ResolveFfmpegPath() {
     std::vector<wchar_t> buffer(32768);
     const DWORD length = SearchPathW(nullptr, L"ffmpeg.exe", nullptr, static_cast<DWORD>(buffer.size()), buffer.data(), nullptr);
     if (length == 0 || length >= buffer.size()) {
-        throw std::runtime_error("FFmpeg was not found. Install FFmpeg or use the OK Record with-ffmpeg package.");
+        throw std::runtime_error("FFmpeg was not found. Install FFmpeg or use the OK-Record with-ffmpeg package.");
     }
     return fs::path(std::wstring(buffer.data(), length));
 #elif defined(__APPLE__)
@@ -355,7 +355,7 @@ NativeFfmpegExportResult RunNativeFfmpegExport(
 
     const fs::path ffmpegPath = ResolveFfmpegPath();
     const std::string exportId =
-        "stage_timelapse_" + FormatUtcTimestampForFilename() + "_" + request.exportIdSuffix;
+        "OK-Record_timelapse_" + FormatUtcTimestampForFilename() + "_" + request.exportIdSuffix;
     const fs::path finalOutputPath = frameSet.exportsDir / (exportId + ".mp4");
     const fs::path tempOutputPath = frameSet.tempDir / (exportId + ".mp4.tmp");
     const fs::path logPath = frameSet.logsDir / (exportId + ".log");

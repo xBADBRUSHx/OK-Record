@@ -71,6 +71,7 @@ for ARCH in $ARCHS; do
     -I"$HYBRID_SDK/src/api" \
     -I"$HYBRID_SDK/src/utilities" \
     "$HYBRID_SDK/src/utilities/UxpAddon.cpp" \
+    "$REPO_ROOT/native/src/export_frame_set.cpp" \
     "$REPO_ROOT/native/src/export_progress.cpp" \
     "$REPO_ROOT/native/src/export_runner.cpp" \
     "$REPO_ROOT/native/src/module.cpp" \

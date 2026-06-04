@@ -25,6 +25,15 @@ assert.strictEqual(settingsModel.DEFAULT_EXPORT_MAX_WIDTH, contract.export.defau
 assert.strictEqual(settingsModel.DEFAULT_CAPTURE_RESOLUTION_PRESET_ID, "1080p");
 assert.strictEqual(settingsModel.DEFAULT_FRAME_QUALITY_PRESET_ID, contract.frame.defaultQualityPreset);
 assert.deepStrictEqual(
+  settingsModel.FRAME_QUALITY_PRESETS,
+  contract.frame.qualityPresets.map((preset) => ({
+    id: preset.id,
+    storageFormat: preset.storageFormat,
+    frameExtension: preset.extension,
+    jpegQuality: preset.jpegQuality,
+  })),
+);
+assert.deepStrictEqual(
   settingsModel.FRAME_QUALITY_PRESET_IDS,
   contract.frame.qualityPresets.map((preset) => preset.id),
 );

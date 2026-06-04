@@ -1,8 +1,8 @@
-# OK Record
+# OK-Record
 
 [简体中文](README.md) | [English](README.en.md)
 
-OK Record is a Photoshop time-lapse panel for turning long painting sessions into clean videos.
+OK-Record is a Photoshop time-lapse panel for turning long painting sessions into clean videos.
 
 It does not continuously record your screen. Instead, it saves snapshots of the Photoshop canvas at the interval you choose, then exports those frames into an MP4 video. The result focuses on the artwork, keeps file sizes under control, and is easier to recover if Photoshop or the computer is interrupted.
 
@@ -12,7 +12,7 @@ Download the `.ccx` installer from GitHub Releases:
 
 [Win OK-Record v1.0.2](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2)
 
-User guide with screenshots: [OK Record User Guide](https://xbadbrushx.github.io/OK-Record/)
+User guide with screenshots: [OK-Record User Guide](https://xbadbrushx.github.io/OK-Record/)
 
 When the panel opens, the plugin checks the public version. If a newer version is available, it prompts the user to open the download page and manually download the new `.ccx` installer.
 
@@ -37,7 +37,7 @@ The author currently does not have a macOS development environment and cannot de
 ## File Locations
 
 Before automatic recording, save the Photoshop document as a local PSD/PSB file first. Documents that have never been saved to a local folder show a save-first warning and do not write sequence frames. A saved PSD/PSB can keep recording even when the current canvas has unsaved edits.
-If the Photoshop document has been saved, OK Record saves recordings in `OK-Record_<PSD filename>/` beside the PSD by default.
+If the Photoshop document has been saved, OK-Record saves recordings in `OK-Record_<PSD filename>/` beside the PSD by default.
 If the user manually chooses an OK-Record save folder, sequence frames and step images continue inside that project folder. The manual choice is bound to the current PSD/PSB; newly saved different PSD/PSB files use their own OK-Record project by default. To continue an incremental PSD/PSB in an older project, click `Choose OK-Record Save Folder` again in that file and choose the old project folder. To return to the default, choose the current PSD's default project folder again.
 You can choose a new OK-Record save folder while recording is paused. Choosing a new folder ends the current paused recording state and restores or scans the timeline from the new folder. The save folder cannot be switched while recording or writing.
 Recording failures, manual capture failures, export completion, and export failures show an alert dialog. After closing the dialog, the panel keeps selectable details at the bottom for copying.

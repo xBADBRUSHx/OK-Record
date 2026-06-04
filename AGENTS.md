@@ -2,7 +2,7 @@
 
 ## Role
 
-`AGENTS.md` is the repository-level development canon for OK Record. Keep this file compact and practical.
+`AGENTS.md` is the repository-level development canon for OK-Record. Keep this file compact and practical.
 
 It owns:
 
@@ -54,6 +54,14 @@ For non-trivial changes:
 - Do not perform drive-by refactors or formatting changes.
 - Preserve unrelated user or parallel-thread changes.
 - Do not add speculative flexibility, configurability, broad fallback paths, compatibility paths, or broad error handling without repo evidence and explicit approval.
+
+## Naming Discipline
+
+- Use `OK-Record` for user-visible product spelling, package names, release assets, project folders, and generated export file prefixes.
+- Use `ok-record` for technical slugs such as schemas, CSS classes, addon filenames, and web/update paths.
+- Use `okRecord` for JavaScript identifiers and `ok_record` for C++ namespaces.
+- Keep the stable install identity `com.badbrush.okrecord`; do not change it for cosmetic naming cleanup.
+- Do not introduce a three-letter abbreviation, the old space-separated product spelling, or retired Stage-era naming unless the user explicitly approves a product rename.
 
 ## Abstraction Discipline
 

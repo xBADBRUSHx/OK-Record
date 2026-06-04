@@ -16,9 +16,13 @@ clang++ \
   -std=c++17 \
   -I"$REPO_ROOT/native/src" \
   "$REPO_ROOT/tests/native-export-runner.test.cpp" \
+  "$REPO_ROOT/native/src/export_frame_set.cpp" \
   "$REPO_ROOT/native/src/export_runner.cpp" \
   "$REPO_ROOT/native/src/export_progress.cpp" \
   "$REPO_ROOT/native/src/storage_recovery.cpp" \
+  -framework CoreFoundation \
+  -framework CoreGraphics \
+  -framework ImageIO \
   -o "$OUT_DIR/native-export-runner.test"
 
 "$OUT_DIR/native-export-runner.test"

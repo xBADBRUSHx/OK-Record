@@ -124,7 +124,7 @@ if [[ -n "$OUTPUT_ROOT" && -d "$OUTPUT_ROOT/延时录制_Recordings" ]]; then
 fi
 
 cat > "$work_dir/README.txt" <<'EOF'
-This archive is intended for OK Record macOS diagnostics.
+This archive is intended for OK-Record macOS diagnostics.
 
 It should contain environment details, git status, release manifests, verification/package logs, and FFmpeg export logs only.
 It should not contain PSD/PSB documents, frame images, exported videos, Adobe SDK files, or generated .uxpaddon binaries.

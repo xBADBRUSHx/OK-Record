@@ -14,7 +14,7 @@
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{d8e82a37-106e-4e30-9be6-6242741c5b35}</ProjectGuid>
-    <RootNamespace>OKRecordAddon</RootNamespace>
+    <RootNamespace>OkRecordAddon</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -103,6 +103,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="$(UxpHybridSdkDir)\src\utilities\UxpAddon.cpp" />
+    <ClCompile Include="..\src\export_frame_set.cpp" />
     <ClCompile Include="..\src\export_progress.cpp" />
     <ClCompile Include="..\src\export_runner.cpp" />
     <ClCompile Include="..\src\module.cpp" />

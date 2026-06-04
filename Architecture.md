@@ -1,14 +1,14 @@
 # Architecture
 
-Last Updated: 2026-06-03
+Last Updated: 2026-06-04
 
-`Architecture.md` is the level-1 architecture contract map and the single architecture authority for OK Record. Scoped docs may own build, packaging, or platform procedures, but they must not duplicate architecture truth.
+`Architecture.md` is the level-1 architecture contract map and the single architecture authority for OK-Record. Scoped docs may own build, packaging, or platform procedures, but they must not duplicate architecture truth.
 
 ## Product Boundary
 
 Status: implemented
 
-Contract: OK Record is a Photoshop UXP Hybrid plugin for interval-based canvas snapshot recording and MP4 timelapse export. It is not real-time screen recording and does not record cursor, menus, dialogs, or other screen content.
+Contract: OK-Record is a Photoshop UXP Hybrid plugin for interval-based canvas snapshot recording and MP4 timelapse export. It is not real-time screen recording and does not record cursor, menus, dialogs, or other screen content.
 
 Owners: `uxp/`, `native/`, `shared/recorder-contract.json`.
 
@@ -27,9 +27,31 @@ Verification anchors: UXP panel smoke, shared contract test, native recovery/exp
 
 Forbidden paths: CEP rewrite, real-time screen capture, browser automation as recorder core.
 
-Predicted wrong defaults: Treating OK Record as a screen recorder instead of a canvas snapshot recorder.
+Predicted wrong defaults: Treating OK-Record as a screen recorder instead of a canvas snapshot recorder.
 
 WHY: The product value is clean artwork-state snapshots that can survive interruptions and export later. Screen recording would capture unrelated UI, increase file size, and move ownership outside the current UXP/native recorder architecture.
+
+## Product Naming
+
+Status: implemented
+
+Contract: `OK-Record` is the user-visible product spelling. `ok-record` is the technical slug for schemas, CSS classes, addon filenames, and web/update paths. `okRecord` is used for JavaScript identifiers, and `ok_record` is used for C++ namespaces. The stable install identity remains `com.badbrush.okrecord`.
+
+Owners: `shared/recorder-contract.json`, `uxp/manifest.json`, `packaging/`, `docs/`, `native/src/export_runner.cpp`.
+
+Code anchors:
+
+- `shared/recorder-contract.json`
+- `uxp/manifest.json`
+- `native/src/export_runner.cpp`
+
+Verification anchors: shared contract test and residual source scan for the old space-separated product spelling and retired export prefixes.
+
+Forbidden paths: three-letter abbreviation, user-facing space-separated product spelling, retired Stage-era naming, cosmetic manifest-id changes.
+
+Predicted wrong defaults: Renaming the install identity to match the visible product spelling.
+
+WHY: The product should read as one branded project in user-facing surfaces and generated files, while technical identifiers still need platform-appropriate stable forms. Changing the manifest install identity would create upgrade and uninstall risk without improving the user-facing brand.
 
 ## UXP Shell And JS Domain
 
@@ -109,9 +131,9 @@ Clean-state decision: v2 does not automatically migrate old panel settings, old 
 
 Status: implemented
 
-Contract: Native export owns FFmpeg discovery, structured argv command assembly, logs, progress parsing, aspect-ratio normalization, and output publishing. Timeline export and directory export share one FFmpeg runner while keeping frame discovery separate.
+Contract: Native export owns frame-set discovery, FFmpeg discovery, structured argv command assembly, logs, progress parsing, aspect-ratio normalization, and output publishing. Timeline export and directory export share one FFmpeg runner while keeping frame discovery separate in `export_frame_set.*`.
 
-Owners: `native/src/module.cpp`, `native/src/export_runner.cpp`, `native/src/export_runner.h`, `native/src/export_progress.cpp`, `native/src/export_progress.h`.
+Owners: `native/src/module.cpp`, `native/src/export_frame_set.cpp`, `native/src/export_frame_set.h`, `native/src/export_runner.cpp`, `native/src/export_runner.h`, `native/src/export_progress.cpp`, `native/src/export_progress.h`.
 
 Topic docs:
 
@@ -120,10 +142,11 @@ Topic docs:
 Code anchors:
 
 - `native/src/module.cpp`
+- `native/src/export_frame_set.cpp`
 - `native/src/export_runner.cpp`
 - `native/src/export_progress.cpp`
 
-Verification anchors: native export-progress tests, native export-runner smoke, `packaging/RUNTIME_SMOKE_CHECKLIST.md`, bundled and PATH-based FFmpeg checks.
+Verification anchors: native export frame-set discovery checks inside the native export-runner test, native export-progress tests, native export-runner smoke, `packaging/RUNTIME_SMOKE_CHECKLIST.md`, bundled and PATH-based FFmpeg checks.
 
 Forbidden paths: shell-string FFmpeg commands, duplicated FFmpeg runner logic, export logs outside the timeline/directory export root.
 

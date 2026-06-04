@@ -16,6 +16,7 @@ uxp/win/**/*.exp
 uxp/mac/**/*.uxpaddon
 *.ccx
 *.zxp
+*.zip
 *.ccx.sha256
 *.zip.sha256
 

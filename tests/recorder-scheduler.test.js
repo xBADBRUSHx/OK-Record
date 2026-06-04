@@ -9,6 +9,12 @@ const scheduler = require(path.join(repoRoot, "uxp", "recorder-scheduler.js"));
 
 const recordingState = contract.recorderStates.find((state) => state === "Recording");
 
+assert.deepStrictEqual(
+  scheduler.DOCUMENT_CHANGE_EVENTS,
+  contract.scheduler.documentChangeEvents,
+  "document dirty events must route through the scheduler owner and match the shared contract",
+);
+
 function baseRecorderState(overrides = {}) {
   return {
     captureOnlyWhenChanged: true,

@@ -1,6 +1,6 @@
-# OK Record Install And Package Notes
+# OK-Record Install And Package Notes
 
-OK Record is distributed as two GitHub Release `.ccx` installers and one local user-package `.zip` that contains both installers plus the local user guide.
+OK-Record is distributed as two GitHub Release `.ccx` installers and one local user-package `.zip` that contains both installers plus the local user guide.
 The user-package `README.txt` is user-facing only; do not include internal release/upload policy notes in it.
 
 ## Build On Windows
@@ -12,8 +12,7 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
-  -ReleasePackageName "OK-Record" `
-  -SealedDate "2026-06-02"
+  -ReleasePackageName "OK-Record"
 ```
 
 The build writes files under `dist/`:
@@ -31,11 +30,20 @@ $env:UXP_HYBRID_SDK = "C:\path\to\uxp-hybrid-plugin-sdk-main"
 .\packaging\build-release.ps1 `
   -HybridSdkPath $env:UXP_HYBRID_SDK `
   -ReleasePackageName "OK-Record_with-ffmpeg" `
-  -SealedDate "2026-06-02" `
   -BundledFfmpegPath "C:\path\to\ffmpeg.exe"
 ```
 
+When `-SealedDate` is omitted, the build records `docs/update.json` `releaseDate` in `release-manifest.json`.
+
 The bundled package places FFmpeg under `vendor/ffmpeg/win/x64/` inside the plugin payload. Runtime export uses that bundled executable first and falls back to system `PATH` only when no bundled executable is present.
+
+After both `.ccx` installers exist, build the local user package:
+
+```powershell
+.\packaging\build-user-package.ps1
+```
+
+The user package is local distribution material. Do not upload the user-package `.zip` to GitHub Releases; upload the two `.ccx` installers directly.
 
 ## Install On Windows
 
@@ -93,7 +101,7 @@ After loading or installing the package, compare the installed payload against t
 ```powershell
 .\packaging\verify-installed-payload.ps1 `
   -ReleaseDir "dist\release\OK-Record" `
-  -InstalledPluginDir "<installed OK Record plugin directory>" `
+  -InstalledPluginDir "<installed OK-Record plugin directory>" `
   -OutputPath "dist\OK-Record-installed-payload-verification.json"
 ```
 

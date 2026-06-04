@@ -1,6 +1,6 @@
 # Contributing
 
-OK Record is a Photoshop UXP Hybrid plugin. Contributions should keep the current product path intact: UXP owns the panel and Photoshop capture orchestration, and the native addon owns durable frame I/O, recovery, FFmpeg export, and diagnostics.
+OK-Record is a Photoshop UXP Hybrid plugin. Contributions should keep the current product path intact: UXP owns the panel and Photoshop capture orchestration, and the native addon owns durable frame I/O, recovery, FFmpeg export, and diagnostics.
 
 ## Before You Start
 

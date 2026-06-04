@@ -3,6 +3,8 @@
 const DEFAULT_IDLE_TIMEOUT_SECONDS = 10;
 const MIN_IDLE_TIMEOUT_SECONDS = 1;
 const MAX_IDLE_TIMEOUT_SECONDS = 86400;
+const PAINTING_TIMER_STATE_SCHEMA = "ok-record.activity-timer.v1";
+const PAINTING_TIMER_STATE_FILENAME = "activity-timer.json";
 const IDLE_STOP_REASON = "超过无变化时间，已暂停累计";
 const MANUAL_END_REASON = "手动结束";
 
@@ -178,17 +180,81 @@ function endPaintingTimerState(state, endedAtMs) {
   };
 }
 
+function normalizePersistedPaintingTimerState(state = {}) {
+  const defaults = createInitialPaintingTimerState();
+  return {
+    ...defaults,
+    enabled: Boolean(state.enabled),
+    active: Boolean(state.active),
+    ended: Boolean(state.ended),
+    idleTimeoutSeconds: clampNumber(
+      state.idleTimeoutSeconds,
+      DEFAULT_IDLE_TIMEOUT_SECONDS,
+      MIN_IDLE_TIMEOUT_SECONDS,
+      MAX_IDLE_TIMEOUT_SECONDS,
+    ),
+    accumulatedSeconds: Math.max(0, toFiniteNumber(state.accumulatedSeconds, 0)),
+    activeStartedAtMs: Math.max(0, toFiniteNumber(state.activeStartedAtMs, 0)),
+    idleDeadlineAtMs: Math.max(0, toFiniteNumber(state.idleDeadlineAtMs, 0)),
+    startedAt: typeof state.startedAt === "string" ? state.startedAt : "",
+    stoppedAt: typeof state.stoppedAt === "string" ? state.stoppedAt : "",
+    lastActivityAt: typeof state.lastActivityAt === "string" ? state.lastActivityAt : "",
+    idleDeadlineAt: typeof state.idleDeadlineAt === "string" ? state.idleDeadlineAt : "",
+    eventCount: Math.max(0, Math.floor(toFiniteNumber(state.eventCount, 0))),
+    lastEventName: typeof state.lastEventName === "string" ? state.lastEventName : "",
+    lastStopReason: typeof state.lastStopReason === "string" ? state.lastStopReason : "",
+    lastError: "",
+  };
+}
+
+function parsePersistedPaintingTimerState(input) {
+  const data = typeof input === "string" ? JSON.parse(input) : input;
+  if (!data || data.schema !== PAINTING_TIMER_STATE_SCHEMA || !data.state) {
+    throw new Error("绘画计时状态 schema 非预期");
+  }
+  return normalizePersistedPaintingTimerState(data.state);
+}
+
+function createPersistedPaintingTimerState(state, savedAt = new Date().toISOString(), accumulatedSeconds) {
+  const normalized = normalizePersistedPaintingTimerState(state);
+  return {
+    schema: PAINTING_TIMER_STATE_SCHEMA,
+    savedAt,
+    state: {
+      enabled: normalized.enabled,
+      active: normalized.active,
+      ended: normalized.ended,
+      idleTimeoutSeconds: normalized.idleTimeoutSeconds,
+      accumulatedSeconds: Math.max(0, toFiniteNumber(accumulatedSeconds, normalized.accumulatedSeconds)),
+      activeStartedAtMs: normalized.active ? normalized.activeStartedAtMs : 0,
+      idleDeadlineAtMs: normalized.active ? normalized.idleDeadlineAtMs : 0,
+      startedAt: normalized.startedAt,
+      stoppedAt: normalized.stoppedAt,
+      lastActivityAt: normalized.lastActivityAt,
+      idleDeadlineAt: normalized.active ? normalized.idleDeadlineAt : "",
+      eventCount: normalized.eventCount,
+      lastEventName: normalized.lastEventName,
+      lastStopReason: normalized.lastStopReason,
+    },
+  };
+}
+
 module.exports = {
   DEFAULT_IDLE_TIMEOUT_SECONDS,
   IDLE_STOP_REASON,
   MANUAL_END_REASON,
   MAX_IDLE_TIMEOUT_SECONDS,
   MIN_IDLE_TIMEOUT_SECONDS,
+  PAINTING_TIMER_STATE_FILENAME,
+  PAINTING_TIMER_STATE_SCHEMA,
   armPaintingTimerState,
+  createPersistedPaintingTimerState,
   createInitialPaintingTimerState,
   endPaintingTimerState,
   finishActiveSegment,
   getElapsedSeconds,
+  normalizePersistedPaintingTimerState,
+  parsePersistedPaintingTimerState,
   recordPaintingActivityState,
   settleRestoredState,
   startPaintingTimerState,

@@ -1,12 +1,12 @@
 Last Updated: 2026-05-29
 Authority: macOS 构建、验证、打包、Photoshop 冒烟测试和诊断交接说明。
-Read When: 在 macOS 构建或测试 OK Record，或者收集 Mac 用户失败反馈。
+Read When: 在 macOS 构建或测试 OK-Record，或者收集 Mac 用户失败反馈。
 Owner: 打包与 macOS 原生维护者。
 Scope: 仅限 macOS；Windows 打包由 `packaging/INSTALL.md` 负责。
 
 # macOS 构建与测试
 
-OK Record 可以在 macOS 上从源码测试，但 macOS 原生插件文件必须在 Mac 上构建。Windows 生成的包不能证明 macOS 包可用。
+OK-Record 可以在 macOS 上从源码测试，但 macOS 原生插件文件必须在 Mac 上构建。Windows 生成的包不能证明 macOS 包可用。
 
 ## 前置条件
 
@@ -48,7 +48,7 @@ macOS 包应包含：
 
 在 Photoshop 中安装或加载包之后：
 
-1. 打开 OK Record 面板。
+1. 打开 OK-Record 面板。
 2. 使用已保存的本地 PSD/PSB 开始一次短录制。
 3. 确认帧文件写入 `延时录制_Recordings/frames/`。
 4. 执行手动采样，确认生成 `步骤图_Steps/step_001.png`。

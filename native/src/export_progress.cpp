@@ -36,7 +36,7 @@ bool ParseDouble(const std::string& text, double& value) {
     char* end = nullptr;
     errno = 0;
     const double parsed = std::strtod(trimmed.c_str(), &end);
-    if (end == trimmed.c_str() || errno == ERANGE || !std::isfinite(parsed)) {
+    if (end == trimmed.c_str() || *end != '\0' || errno == ERANGE || !std::isfinite(parsed)) {
         return false;
     }
 
@@ -49,11 +49,14 @@ bool ParseUInt32(const std::string& text, uint32_t& value) {
     if (trimmed.empty()) {
         return false;
     }
+    if (trimmed.front() == '-' || trimmed.front() == '+') {
+        return false;
+    }
 
     char* end = nullptr;
     errno = 0;
     const unsigned long parsed = std::strtoul(trimmed.c_str(), &end, 10);
-    if (end == trimmed.c_str() || errno == ERANGE || parsed > std::numeric_limits<uint32_t>::max()) {
+    if (end == trimmed.c_str() || *end != '\0' || errno == ERANGE || parsed > std::numeric_limits<uint32_t>::max()) {
         return false;
     }
 
@@ -66,11 +69,14 @@ bool ParseUInt64(const std::string& text, uint64_t& value) {
     if (trimmed.empty()) {
         return false;
     }
+    if (trimmed.front() == '-' || trimmed.front() == '+') {
+        return false;
+    }
 
     char* end = nullptr;
     errno = 0;
     const unsigned long long parsed = std::strtoull(trimmed.c_str(), &end, 10);
-    if (end == trimmed.c_str() || errno == ERANGE) {
+    if (end == trimmed.c_str() || *end != '\0' || errno == ERANGE) {
         return false;
     }
 

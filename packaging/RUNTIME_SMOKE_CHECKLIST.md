@@ -1,4 +1,4 @@
-# OK Record Runtime Smoke Checklist
+# OK-Record Runtime Smoke Checklist
 
 Run this checklist in Photoshop after loading or installing the release package.
 
@@ -7,7 +7,7 @@ Run this checklist in Photoshop after loading or installing the release package.
 - [ ] For the lightweight Windows package, FFmpeg is available from `PATH` as `ffmpeg.exe`.
 - [ ] For the no-setup Windows package, `vendor/ffmpeg/win/x64/ffmpeg.exe` is present in the installed payload.
 - [ ] On macOS source builds, FFmpeg is available from `PATH` as `ffmpeg`.
-- [ ] Photoshop opens the OK Record panel without UXP errors.
+- [ ] Photoshop opens the OK-Record panel without UXP errors.
 - [ ] The loaded plugin payload matches the release package when payload verification is available.
 
 ## Capture And Storage
@@ -23,7 +23,7 @@ Run this checklist in Photoshop after loading or installing the release package.
 ## Export
 
 - [ ] Click the sequence-frame folder button and confirm it opens `延时录制_Recordings/`.
-- [ ] Select `延时录制_Recordings/` as the export source and confirm OK Record resolves the latest valid Record frames.
+- [ ] Select `延时录制_Recordings/` as the export source and confirm OK-Record resolves the latest valid Record frames.
 - [ ] Export a short MP4 and confirm output is written under `exports/`.
 - [ ] Confirm export success shows a dialog and leaves selectable details in the bottom notice.
 - [ ] Confirm FFmpeg log and `.progress` files are written under `logs/`.
@@ -33,5 +33,5 @@ Run this checklist in Photoshop after loading or installing the release package.
 - [ ] Create a new never-saved document and confirm Start Recording shows the save-first warning without writing frames.
 - [ ] Confirm the save-first warning appears in a dialog and remains selectable in the bottom notice.
 - [ ] Save that document as a local PSD/PSB, make another canvas edit without saving again, and confirm recording is allowed.
-- [ ] While recording one saved PSD/PSB, switch to a different document before the next interval and confirm OK Record stops instead of writing frames into the previous timeline.
+- [ ] While recording one saved PSD/PSB, switch to a different document before the next interval and confirm OK-Record stops instead of writing frames into the previous timeline.
 - [ ] Use the panel flyout menu clear-frame action and confirm it shows a destructive confirmation before clearing the current document's sequence frames.

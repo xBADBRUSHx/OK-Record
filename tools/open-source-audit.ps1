@@ -1,3 +1,7 @@
+param(
+    [switch]$PublicUpload
+)
+
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
@@ -15,9 +19,21 @@ $pathPatterns = @(
     '(^|/)uxp-hybrid-plugin-sdk',
     '(^|/)adobe_photoshop_sdk',
     '(^|/)Photoshop SDK',
-    '\.(ccx|zxp|psd|psb|psdc|mp4|mov|avi|dll|exe)$',
+    '\.(ccx|zxp|psd|psb|psdc|mp4|mov|avi|dll|exe|zip)$',
     '\.(ccx|zip)\.sha256$'
 )
+
+if ($PublicUpload) {
+    $pathPatterns += @(
+        '^AGENTS\.md$',
+        '^PLAN\.md$',
+        '^Checklist\.md$',
+        '^docs/README\.md$',
+        '^docs/zh-CN/README\.md$',
+        '^docs/mac-build\.md$',
+        '^docs/zh-CN/mac-build\.md$'
+    )
+}
 
 $violations = @()
 foreach ($file in $candidateFiles) {
@@ -57,4 +73,5 @@ if ($localPathMatches) {
     $localPathMatches | ForEach-Object { Write-Host $_ }
 }
 
-Write-Host "Open-source audit passed: no tracked or unignored release binaries, SDK folders, capture/export media, PSD/PSB files, or obvious secret assignments were found."
+$modeLabel = if ($PublicUpload) { "public upload" } else { "local source" }
+Write-Host "Open-source audit passed for ${modeLabel}: no tracked or unignored release binaries, SDK folders, capture/export media, PSD/PSB files, zip packages, or obvious secret assignments were found."

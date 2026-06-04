@@ -39,15 +39,15 @@ for (const blockedCase of [
 
 const manualContext = recordingContext.createRecordingContext({
   documentPath: "E:\\Paint\\Character.psd",
-  manualProjectOutputDir: "D:\\OKRecord\\Character",
+  manualProjectOutputDir: "D:\\OK-Record\\Character",
   manualProjectOutputDocumentKey: recordingContext.normalizePathKey("E:\\Paint\\Character.psd"),
 });
 assert.strictEqual(manualContext.ok, true);
-assert.strictEqual(manualContext.outputDir, "D:\\OKRecord\\Character", "manual project output dir must override the PSD-adjacent project dir");
+assert.strictEqual(manualContext.outputDir, "D:\\OK-Record\\Character", "manual project output dir must override the PSD-adjacent project dir");
 
 const newDocumentContext = recordingContext.createRecordingContext({
   documentPath: "E:\\Paint\\Other.psd",
-  manualProjectOutputDir: "D:\\OKRecord\\Character",
+  manualProjectOutputDir: "D:\\OK-Record\\Character",
   manualProjectOutputDocumentKey: recordingContext.normalizePathKey("E:\\Paint\\Character.psd"),
 });
 assert.strictEqual(newDocumentContext.ok, true);
@@ -55,11 +55,11 @@ assert.strictEqual(newDocumentContext.outputDir, "E:\\Paint\\OK-Record_Other", "
 
 const manuallyJoinedIncrementalContext = recordingContext.createRecordingContext({
   documentPath: "E:\\Paint\\Other.psd",
-  manualProjectOutputDir: "D:\\OKRecord\\Character",
+  manualProjectOutputDir: "D:\\OK-Record\\Character",
   manualProjectOutputDocumentKey: recordingContext.normalizePathKey("E:\\Paint\\Other.psd"),
 });
 assert.strictEqual(manuallyJoinedIncrementalContext.ok, true);
-assert.strictEqual(manuallyJoinedIncrementalContext.outputDir, "D:\\OKRecord\\Character", "a new PSD can join an old project only after the user manually chooses that project for the new PSD");
+assert.strictEqual(manuallyJoinedIncrementalContext.outputDir, "D:\\OK-Record\\Character", "a new PSD can join an old project only after the user manually chooses that project for the new PSD");
 
 const automaticBinding = recordingContext.createManualProjectOutputBinding({
   documentPath: "E:\\Paint\\Character.psd",

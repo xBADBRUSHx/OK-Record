@@ -1,5 +1,43 @@
 "use strict";
 
+const DOCUMENT_CHANGE_EVENTS = Object.freeze([
+  "paint",
+  "draw",
+  "set",
+  "make",
+  "delete",
+  "move",
+  "transform",
+  "paste",
+  "pasteInto",
+  "pasteOutside",
+  "cut",
+  "clearEvent",
+  "crop",
+  "canvasSize",
+  "imageSize",
+  "duplicate",
+  "mergeLayersNew",
+  "mergeLayers",
+  "mergeVisible",
+  "flattenImage",
+  "rasterize",
+  "rasterizeTypeLayer",
+  "placeEvent",
+  "convertMode",
+  "applyStyle",
+  "stroke",
+  "gradientClassEvent",
+  "hueSaturation",
+  "levels",
+  "curves",
+  "invert",
+  "undoEvent",
+  "revert",
+  "open",
+  "close",
+]);
+
 function shouldSkipScheduledCaptureState(recorderState, options) {
   const force = Boolean(options && options.force);
   return !force &&
@@ -40,6 +78,7 @@ function shouldDeferCaptureForIdle(recorderState, options) {
 }
 
 module.exports = {
+  DOCUMENT_CHANGE_EVENTS,
   shouldSkipScheduledCaptureState,
   createSkippedCapturePatch,
   didDocumentChangeDuringCapture,

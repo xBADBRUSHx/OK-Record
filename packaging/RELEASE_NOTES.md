@@ -1,6 +1,6 @@
-# OK Record Release Notes
+# OK-Record Release Notes
 
-## OK Record v1.0.2 - 2026-06-03
+## OK-Record v1.0.2 - 2026-06-03
 
 ### 中文
 
@@ -20,23 +20,23 @@
 - The OK-Record save folder can be changed while recording is paused. Choosing a new folder ends the paused recording state and restores or scans the timeline from the new folder.
 - Recording failures, manual capture failures, export completion, and export failures now show an alert dialog while keeping selectable details in the bottom notice.
 
-## OK Record v1.0.1 - 2026-06-03
+## OK-Record v1.0.1 - 2026-06-03
 
 ### 中文
 
 - 修复部分 Photoshop 2026 环境中，RGB 颜色 / 8 位文档被 UXP 返回为 3 通道 RGB 像素后无法录制的问题。
-- OK Record 现在同时支持 8 位 RGB 和 8 位 RGBA 像素缓冲区；用户不需要为了这个问题调整文档设置。
+- OK-Record 现在同时支持 8 位 RGB 和 8 位 RGBA 像素缓冲区；用户不需要为了这个问题调整文档设置。
 
 ### English
 
 - Fixed recording failures in some Photoshop 2026 environments where RGB Color / 8-bit documents are returned by UXP as 3-channel RGB pixels.
-- OK Record now accepts both 8-bit RGB and 8-bit RGBA pixel buffers; users do not need to change document settings for this issue.
+- OK-Record now accepts both 8-bit RGB and 8-bit RGBA pixel buffers; users do not need to change document settings for this issue.
 
-## OK Record v1.0 - 2026-06-02
+## OK-Record v1.0 - 2026-06-02
 
 ### 中文
 
-这是 OK Record 的 Windows v1.0 发布版，主要用于 Photoshop 画布延时录制、序列帧恢复和 MP4 导出。
+这是 OK-Record 的 Windows v1.0 发布版，主要用于 Photoshop 画布延时录制、序列帧恢复和 MP4 导出。
 
 GitHub Release 直接提供两个 `.ccx` 安装文件：
 
@@ -62,7 +62,7 @@ GitHub Release 直接提供两个 `.ccx` 安装文件：
 
 ### English
 
-This is the OK Record Windows v1.0 release for Photoshop canvas time-lapse recording, frame recovery, and MP4 export.
+This is the OK-Record Windows v1.0 release for Photoshop canvas time-lapse recording, frame recovery, and MP4 export.
 
 The GitHub Release directly provides two `.ccx` installers:
 

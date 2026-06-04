@@ -1,3 +1,4 @@
+#include "export_frame_set.h"
 #include "export_runner.h"
 
 #include <cassert>
@@ -6,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -35,6 +37,21 @@ std::string ReadText(const fs::path& path) {
     std::ifstream stream(path, std::ios::binary);
     assert(stream);
     return std::string(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
+}
+
+template <typename Callback>
+void ExpectThrowsContaining(Callback callback, const std::string& needle) {
+    try {
+        callback();
+    } catch (const std::exception& exception) {
+        const std::string message = exception.what();
+        if (message.find(needle) == std::string::npos) {
+            throw std::runtime_error("Expected exception containing '" + needle + "', got: " + message);
+        }
+        return;
+    }
+
+    throw std::runtime_error("Expected exception containing '" + needle + "'");
 }
 
 std::vector<uint8_t> MakeTinyPng() {
@@ -96,6 +113,122 @@ std::vector<uint8_t> MakeTinyJpeg() {
         153, 218, 21, 37, 137, 141, 114, 73, 199, 38, 138, 40, 175, 158, 173, 252,
         89, 122, 179, 229, 113, 31, 198, 159, 171, 252, 207, 255, 217,
     };
+}
+
+std::string ExportFrameMetadataJson(
+    uint32_t frameIndex,
+    uint32_t width,
+    uint32_t height,
+    size_t encodedByteLength,
+    const std::string& extension = ".jpg") {
+    const uint64_t sourceByteLength = static_cast<uint64_t>(width) * height * 4;
+    const std::string storageFormat = extension == ".png" ? ok_record::kFrameStoragePng : ok_record::kFrameStorageJpeg;
+    const std::string frameQualityPreset = extension == ".png" ? ok_record::kFrameQualityLossless : ok_record::kFrameQualityDefault;
+    const uint32_t jpegQuality = extension == ".png" ? 0 : 80;
+
+    std::ostringstream json;
+    json << "{\n";
+    json << "  \"schema\": \"ok-record.frame.v1\",\n";
+    json << "  \"sessionId\": \"" << ok_record::kRecordingTimelineId << "\",\n";
+    json << "  \"frameIndex\": " << frameIndex << ",\n";
+    json << "  \"capturedAt\": \"2026-06-04T00:00:00.000Z\",\n";
+    json << "  \"frameStorageFormat\": \"" << storageFormat << "\",\n";
+    json << "  \"frameExtension\": \"" << extension << "\",\n";
+    json << "  \"frameQualityPreset\": \"" << frameQualityPreset << "\",\n";
+    json << "  \"jpegQuality\": " << jpegQuality << ",\n";
+    json << "  \"width\": " << width << ",\n";
+    json << "  \"height\": " << height << ",\n";
+    json << "  \"components\": 4,\n";
+    json << "  \"componentSize\": 8,\n";
+    json << "  \"pixelFormat\": \"RGBA\",\n";
+    json << "  \"colorSpace\": \"RGB\",\n";
+    json << "  \"colorProfile\": \"sRGB\",\n";
+    json << "  \"byteLength\": " << sourceByteLength << ",\n";
+    json << "  \"sourceByteLength\": " << sourceByteLength << ",\n";
+    json << "  \"encodedByteLength\": " << encodedByteLength << "\n";
+    json << "}\n";
+    return json.str();
+}
+
+void WriteCommittedExportFrame(
+    const fs::path& framesDir,
+    uint32_t frameIndex,
+    uint32_t width,
+    uint32_t height,
+    const std::vector<uint8_t>& bytes) {
+    fs::create_directories(framesDir);
+    const std::string frameName = ok_record::FormatFrameName(frameIndex);
+    WriteBytes(framesDir / (frameName + ".jpg"), bytes);
+    WriteText(framesDir / (frameName + ".json"), ExportFrameMetadataJson(frameIndex, width, height, bytes.size()));
+}
+
+void AssertTimelineFrameSetDiscovery(const fs::path& root) {
+    using namespace ok_record;
+
+    const fs::path outputDir = root / "timeline-frame-set";
+    const fs::path framesDir = GetRecordingsRootPath(PathToUtf8(outputDir)) / "frames";
+    const std::vector<uint8_t> encodedBytes = {1, 2, 3, 4, 5, 6};
+    WriteCommittedExportFrame(framesDir, 1, 4, 2, encodedBytes);
+    WriteCommittedExportFrame(framesDir, 2, 2, 2, encodedBytes);
+    WriteCommittedExportFrame(framesDir, 3, 4, 2, encodedBytes);
+
+    TimelineExportFrameSetRequest strictRequest;
+    strictRequest.outputDir = PathToUtf8(outputDir);
+    strictRequest.aspectRatioMode = "strict";
+    strictRequest.maxWidth = 1920;
+    ExpectThrowsContaining([&]() {
+        (void)BuildTimelineExportFrameSet(strictRequest);
+    }, "mixed aspect ratios");
+
+    TimelineExportFrameSetRequest padRequest = strictRequest;
+    padRequest.aspectRatioMode = "pad";
+    const ExportFrameSet padFrameSet = BuildTimelineExportFrameSet(padRequest);
+    assert(padFrameSet.frames.size() == 3);
+    assert(padFrameSet.outputWidth == 4);
+    assert(padFrameSet.outputHeight == 2);
+    assert(padFrameSet.padToOutput);
+    assert(padFrameSet.forceScaleToOutput);
+    assert(!padFrameSet.stageInputSequence);
+
+    TimelineExportFrameSetRequest majorityRequest = strictRequest;
+    majorityRequest.aspectRatioMode = "majority";
+    const ExportFrameSet majorityFrameSet = BuildTimelineExportFrameSet(majorityRequest);
+    assert(majorityFrameSet.frames.size() == 2);
+    assert(majorityFrameSet.frames[0].frameIndex == 1);
+    assert(majorityFrameSet.frames[1].frameIndex == 3);
+    assert(majorityFrameSet.stageInputSequence);
+    assert(!majorityFrameSet.padToOutput);
+}
+
+void AssertSequenceFrameSetDiscovery(const fs::path& root) {
+    using namespace ok_record;
+
+    const fs::path sequenceDir = root / "sequence-frame-set";
+    fs::create_directories(sequenceDir);
+    WriteBytes(sequenceDir / "step_001.png", MakeTinyPng());
+    WriteBytes(sequenceDir / "step_002.png", MakeTinyPng());
+    WriteText(sequenceDir / "notes.txt", "ignored\n");
+
+    SequenceExportFrameSetRequest request;
+    request.framesDir = PathToUtf8(sequenceDir);
+    request.aspectRatioMode = "strict";
+    request.maxWidth = 1920;
+    const ExportFrameSet frameSet = BuildSequenceExportFrameSet(request);
+    assert(frameSet.frames.size() == 2);
+    assert(frameSet.filenamePrefix == "step_");
+    assert(frameSet.indexDigits == 3);
+    assert(frameSet.storageSpec.storageFormat == kFrameStoragePng);
+    assert(frameSet.outputWidth == 2);
+    assert(frameSet.outputHeight == 2);
+    assert(frameSet.sourceType == "directory");
+
+    const fs::path mixedNamingDir = root / "mixed-sequence-names";
+    fs::create_directories(mixedNamingDir);
+    WriteBytes(mixedNamingDir / "step_001.png", MakeTinyPng());
+    WriteBytes(mixedNamingDir / "frame_000002.png", MakeTinyPng());
+    ExpectThrowsContaining([&]() {
+        (void)CollectExportableSequenceFrames(mixedNamingDir);
+    }, "mixed frame naming");
 }
 
 ok_record::NativeFfmpegExportResult RunExportSmoke(
@@ -195,6 +328,9 @@ int main() {
         WriteText(bundledFfmpegPath, "ffmpeg");
         assert(ResolveBundledFfmpegPathFromModulePath(modulePath) == fs::absolute(bundledFfmpegPath));
         assert(ResolveBundledFfmpegPathFromModulePath(root / "missing" / "win" / "x64" / "ok-record-addon.uxpaddon").empty());
+
+        AssertTimelineFrameSetDiscovery(root);
+        AssertSequenceFrameSetDiscovery(root);
 
         const fs::path ffmpegPath = ResolveFfmpegPath();
         assert(!ffmpegPath.empty());

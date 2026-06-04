@@ -87,6 +87,13 @@ if [[ -z "$PACKAGE_VERSION" || -z "$ADDON_NAME" ]]; then
   echo "Package version or addon name is empty." >&2
   exit 1
 fi
+if [[ -z "$SEALED_DATE" ]]; then
+  SEALED_DATE="$(node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync("docs/update.json","utf8")); console.log(m.releaseDate || "");')"
+fi
+if [[ -z "$SEALED_DATE" ]]; then
+  echo "Sealed date is empty. Set docs/update.json releaseDate or pass --sealed-date." >&2
+  exit 1
+fi
 
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 GIT_SHORT="$(git rev-parse --short HEAD 2>/dev/null || echo nogit)"

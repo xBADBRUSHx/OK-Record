@@ -208,7 +208,7 @@ function Copy-BundledFfmpeg {
     }
     $noticeLines += @(
         "",
-        "The FFmpeg binary is distributed as a separate third-party tool. OK Record invokes it as an external process for video export."
+        "The FFmpeg binary is distributed as a separate third-party tool. OK-Record invokes it as an external process for video export."
     )
     $noticeLines | Set-Content -LiteralPath $noticePath -Encoding UTF8
     $relativeFiles += $noticeRelativePath
@@ -320,11 +320,23 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
 }
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$updateManifestPath = Join-Path $repoRoot "docs\update.json"
+if (-not (Test-Path -LiteralPath $updateManifestPath -PathType Leaf)) {
+    throw "Update manifest not found: $updateManifestPath"
+}
+
+$updateManifest = Get-Content -LiteralPath $updateManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $PackageVersion) {
     $PackageVersion = [string]$manifest.version
 }
 if (-not $PackageVersion) {
     throw "Package version is empty. Set uxp/manifest.json version or pass -PackageVersion."
+}
+if (-not $SealedDate) {
+    $SealedDate = [string]$updateManifest.releaseDate
+}
+if (-not $SealedDate) {
+    throw "Sealed date is empty. Set docs/update.json releaseDate or pass -SealedDate."
 }
 
 $addonName = [string]$manifest.addon.name

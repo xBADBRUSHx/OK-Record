@@ -119,7 +119,7 @@ $checks = @(
         Required = $false
         Found = [bool]$photoshopSdk
         Path = $photoshopSdk
-        NextAction = if ($photoshopSdk) { "" } else { "Optional for this UXP Hybrid build path; do not block OK Record builds on it." }
+        NextAction = if ($photoshopSdk) { "" } else { "Optional for this UXP Hybrid build path; do not block OK-Record builds on it." }
     },
     [pscustomobject]@{
         Name = "UXP Hybrid SDK"
