@@ -149,3 +149,29 @@ assert.strictEqual(
   false,
   "zero max wait should sample immediately without waiting for idle",
 );
+
+const modalNumberError = new Error("executeAsModal was rejected");
+modalNumberError.number = 9;
+assert.strictEqual(
+  scheduler.isHostModalCollisionError(modalNumberError),
+  true,
+  "Photoshop modal collision error number must be treated as a temporary host-busy state",
+);
+
+assert.strictEqual(
+  scheduler.isHostModalCollisionError(new Error("host is in a modal state")),
+  true,
+  "legacy host modal collision text must be treated as a temporary host-busy state",
+);
+
+assert.strictEqual(
+  scheduler.isHostModalCollisionError(new Error("Plugin: com.adobe.testPlugin is running a modal command")),
+  true,
+  "Photoshop 25.10 modal collision text must be treated as a temporary host-busy state",
+);
+
+assert.strictEqual(
+  scheduler.isHostModalCollisionError(new Error("document changed while recording")),
+  false,
+  "ordinary recording errors must not be deferred as host modal collisions",
+);

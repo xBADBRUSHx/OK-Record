@@ -245,6 +245,8 @@ async function run() {
   let writeFrameCount = 0;
   let failStepWrite = false;
   let failExportSession = false;
+  let hostModalFailureCount = 0;
+  const executeAsModalOptions = [];
   const confirmMock = (message) => {
     confirmMessages.push(String(message || ""));
     return true;
@@ -284,6 +286,9 @@ async function run() {
     },
     versions: {
       plugin: "1.0.0",
+    },
+    host: {
+      version: "27.6.0",
     },
     storage: {
       localFileSystem: {
@@ -354,6 +359,13 @@ async function run() {
         idleListenerCalls.idleTimes.push(Number(seconds));
       },
       async executeAsModal(callback, options = {}) {
+        executeAsModalOptions.push(options);
+        if (hostModalFailureCount > 0) {
+          hostModalFailureCount -= 1;
+          const error = new Error("host is in a modal state");
+          error.number = 9;
+          throw error;
+        }
         return callback({}, options.descriptor || {});
       },
     },
@@ -824,6 +836,8 @@ async function run() {
   }
   assert.strictEqual(writeFrameCount, 2, "stale scheduled capture after document close must not write a new frame");
 
+  numberInputs[1].value = "0";
+  numberInputs[1].dispatchEvent(new MockEvent("change"));
   const newSavedDocumentPath = path.join(repoRoot, "tests", "out", "new.psd");
   const newSavedDocumentDefaultOutputDir = path.join(repoRoot, "tests", "out", "OK-Record_new");
   photoshopMock.app.activeDocument.path = newSavedDocumentPath;
@@ -832,13 +846,36 @@ async function run() {
   recordingButton.dispatchEvent(new MockEvent("click"));
   await waitForCondition(() => writeFrameCount === 3, "a newly saved PSD can start recording after a previous PSD close");
   assert.strictEqual(writeFrameOutputDirs[writeFrameOutputDirs.length - 1], newSavedDocumentDefaultOutputDir, "a newly saved PSD must use its own default OK-Record directory instead of the previous PSD manual directory");
+
+  const documentChangeListener = actionListeners.find((entry) => Array.isArray(entry.events) && entry.events.includes("paint"));
+  assert(documentChangeListener, "recording must subscribe to Photoshop document change events");
+  documentChangeListener.listener("paint", {});
+  await flushMicrotasks();
+  await waitForCondition(() => timers.length > 0, "recording restart must schedule a timed capture for host-modal deferral coverage");
+  const hostModalScheduledCapture = timers.shift();
+  assert(hostModalScheduledCapture, "recording restart must schedule a timed capture for host-modal deferral coverage");
+  const alertCountBeforeHostModal = alertMessages.length;
+  hostModalFailureCount = 1;
+  hostModalScheduledCapture();
+  await flushMicrotasks();
+  assert.strictEqual(writeFrameCount, 3, "host-modal collision during timed capture must not write a partial frame");
+  assert.strictEqual(alertMessages.length, alertCountBeforeHostModal, "host-modal collision during timed capture must not show a blocking failure alert");
+  assert(timers.length > 0, "host-modal collision during timed capture must schedule a short retry");
+  await runNextTimer("host-modal deferred timed capture must retry after Photoshop leaves modal state");
+  await waitForCondition(() => writeFrameCount === 4, "host-modal deferred timed capture must write on retry");
+  assert(
+    executeAsModalOptions.some((options) => options.timeOut === 1),
+    "Photoshop 25.10+ capture modal calls must pass the executeAsModal timeOut option",
+  );
+
+  await waitForCondition(() => timers.length > 0, "host-modal retry success must schedule the next timed capture");
   photoshopMock.app.activeDocument.path = path.join(repoRoot, "tests", "out", "other.psd");
   photoshopMock.app.activeDocument.id = 2;
   const scheduledCapture = timers.shift();
   assert(scheduledCapture, "recording restart must schedule the next timed capture");
   scheduledCapture();
   await flushMicrotasks();
-  assert.strictEqual(writeFrameCount, 3, "switching Photoshop documents while recording must not write into the locked timeline");
+  assert.strictEqual(writeFrameCount, 4, "switching Photoshop documents while recording must not write into the locked timeline");
   assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "定时采样失败", "document-switch failure must show a capture failure notice");
   assert(alertMessages.some((message) => message.includes("定时采样失败") && message.includes("当前 Photoshop 文档已经变化")), "timed recording failure must show a blocking alert with the document-change error");
 
@@ -862,14 +899,14 @@ async function run() {
 
   failExportSession = false;
   recordingButton.dispatchEvent(new MockEvent("click"));
-  await waitForCondition(() => writeFrameCount === 4, "recording can restart after export failure");
+  await waitForCondition(() => writeFrameCount === 5, "recording can restart after export failure");
   await waitForCondition(
-    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 4 帧",
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 5 帧",
     "recording after export failure must settle before paused directory selection",
   );
   recordingButton.dispatchEvent(new MockEvent("click"));
   await waitForCondition(
-    () => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 4 帧",
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 5 帧",
     "recording must pause before choosing a new project directory",
   );
   assert.strictEqual(chooseProjectOutputDirButton.disabled, false, "paused recording must allow choosing a new OK-Record project directory");

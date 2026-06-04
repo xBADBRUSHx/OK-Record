@@ -77,10 +77,21 @@ function shouldDeferCaptureForIdle(recorderState, options) {
     Boolean(recorderState && recorderState.state === "Recording");
 }
 
+function isHostModalCollisionError(error) {
+  if (Number(error && error.number) === 9) {
+    return true;
+  }
+
+  const message = String(error && (error.message || error) || "").toLowerCase();
+  return message.includes("host is in a modal state") ||
+    message.includes("running a modal command");
+}
+
 module.exports = {
   DOCUMENT_CHANGE_EVENTS,
   shouldSkipScheduledCaptureState,
   createSkippedCapturePatch,
   didDocumentChangeDuringCapture,
   shouldDeferCaptureForIdle,
+  isHostModalCollisionError,
 };

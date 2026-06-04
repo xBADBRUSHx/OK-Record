@@ -50,6 +50,9 @@ const DEFAULT_EXPORT_HOLD_SECONDS = exportProfileModel.DEFAULT_EXPORT_HOLD_SECON
 const DEFAULT_EXPORT_OUTPUT_FPS = exportProfileModel.DEFAULT_EXPORT_OUTPUT_FPS;
 const DEFAULT_EXPORT_MAX_WIDTH = exportProfileModel.DEFAULT_EXPORT_MAX_WIDTH;
 const EXPORT_STATUS_PAINT_DELAY_MS = 80;
+const EXECUTE_AS_MODAL_TIMEOUT_MIN_PHOTOSHOP_VERSION = "25.10";
+const EXECUTE_AS_MODAL_COLLISION_TIMEOUT_SECONDS = 1;
+const HOST_MODAL_CAPTURE_RETRY_DELAY_MS = 2000;
 const DEFAULT_CAPTURE_RESOLUTION_PRESET_ID = settingsModel.DEFAULT_CAPTURE_RESOLUTION_PRESET_ID;
 const CAPTURE_RESOLUTION_PRESET_LABELS = Object.freeze({
   [DEFAULT_CAPTURE_RESOLUTION_PRESET_ID]: "1080p",
@@ -985,6 +988,30 @@ function compareVersionStrings(candidateVersion, currentVersion) {
   return 0;
 }
 
+function getPhotoshopHostVersion() {
+  return uxp.host && uxp.host.version ? String(uxp.host.version).trim() : "";
+}
+
+function supportsExecuteAsModalTimeout() {
+  const hostVersion = getPhotoshopHostVersion();
+  return hostVersion &&
+    compareVersionStrings(hostVersion, EXECUTE_AS_MODAL_TIMEOUT_MIN_PHOTOSHOP_VERSION) >= 0;
+}
+
+function createCaptureExecuteAsModalOptions(commandName, descriptor) {
+  const options = {
+    commandName,
+    interactive: true,
+  };
+  if (descriptor) {
+    options.descriptor = descriptor;
+  }
+  if (supportsExecuteAsModalTimeout()) {
+    options.timeOut = EXECUTE_AS_MODAL_COLLISION_TIMEOUT_SECONDS;
+  }
+  return options;
+}
+
 function normalizeUpdateUrl(url, fieldName) {
   const value = String(url || "").trim();
   if (!value) {
@@ -1322,6 +1349,7 @@ async function runScheduledCapture(label, options) {
       label,
       commandName: "OK-Record 定时采样",
       finalState: getRecordingFinalStateAfterCapture,
+      deferHostModalCollision: true,
     });
 
     if (recordingPauseRequested) {
@@ -1338,6 +1366,11 @@ async function runScheduledCapture(label, options) {
       setStatus(formatRecorderStatus("录制已暂停"));
     }
   } catch (error) {
+    if (recordingLoopActive && recorderScheduler.isHostModalCollisionError(error)) {
+      deferScheduledCaptureForHostModal(label);
+      return null;
+    }
+
     recordingLoopActive = false;
     recordingPauseRequested = false;
     await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
@@ -1393,6 +1426,21 @@ function deferScheduledCaptureUntilIdle(label) {
   setStatus(formatRecorderStatus(`${label}：等待 Photoshop 空闲后采样`));
 }
 
+function deferScheduledCaptureForHostModal(label) {
+  clearScheduledCapture();
+  const nextCaptureAt = new Date(Date.now() + HOST_MODAL_CAPTURE_RETRY_DELAY_MS).toISOString();
+  setRecorderState({
+    state: RECORDER_STATES.recording,
+    nextCaptureAt,
+    lastError: "",
+  });
+  captureTimerId = setTimeout(() => {
+    runScheduledCapture(label, { force: true }).catch(() => {});
+  }, HOST_MODAL_CAPTURE_RETRY_DELAY_MS);
+  updateControlState();
+  setStatus(formatRecorderStatus(`${label}：Photoshop 正在变换或显示模态窗口，等待完成后继续采样`));
+}
+
 async function captureStepFrame(options) {
   const core = photoshop.core;
   const label = options.label;
@@ -1411,13 +1459,12 @@ async function captureStepFrame(options) {
 
     const outputDir = await getStepOutputDirNativePath();
     const modalStartedAtMs = nowMs();
-    const capture = await core.executeAsModal(captureCompositeForFrameRead, {
-      commandName,
-      interactive: true,
-      descriptor: {
+    const capture = await core.executeAsModal(
+      captureCompositeForFrameRead,
+      createCaptureExecuteAsModalOptions(commandName, {
         targetWidth: 0,
-      },
-    });
+      }),
+    );
     const modalMs = elapsedMsSince(modalStartedAtMs);
     const copyStartedAtMs = nowMs();
     const arrayBuffer = copyPixelDataToArrayBuffer(capture.pixelData);
@@ -1495,6 +1542,7 @@ async function captureFrame(options) {
   const core = photoshop.core;
   const label = options.label;
   const commandName = options.commandName;
+  let modalReadCompleted = false;
 
   try {
     if (isRecorderBusy()) {
@@ -1510,13 +1558,13 @@ async function captureFrame(options) {
     const outputDir = documentContext.outputDir;
     const captureTargetWidth = readFrameCaptureTargetWidthFromPanel();
     const modalStartedAtMs = nowMs();
-    const capture = await core.executeAsModal(captureCompositeForFrameRead, {
-      commandName,
-      interactive: true,
-      descriptor: {
+    const capture = await core.executeAsModal(
+      captureCompositeForFrameRead,
+      createCaptureExecuteAsModalOptions(commandName, {
         targetWidth: captureTargetWidth,
-      },
-    });
+      }),
+    );
+    modalReadCompleted = true;
     const modalMs = elapsedMsSince(modalStartedAtMs);
     const copyStartedAtMs = nowMs();
     const arrayBuffer = copyPixelDataToArrayBuffer(capture.pixelData);
@@ -1606,6 +1654,16 @@ async function captureFrame(options) {
     logCaptureDiagnostics("capture frame", captureDiagnostics);
     return result;
   } catch (error) {
+    if (
+      options &&
+      options.deferHostModalCollision &&
+      !modalReadCompleted &&
+      recorderScheduler.isHostModalCollisionError(error)
+    ) {
+      console.log("[OK-Record] capture frame deferred because Photoshop is modal:", formatError(error));
+      throw error;
+    }
+
     setRecorderState({
       state: RECORDER_STATES.error,
       nextCaptureAt: "",

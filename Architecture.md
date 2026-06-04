@@ -57,7 +57,7 @@ WHY: The product should read as one branded project in user-facing surfaces and 
 
 Status: implemented
 
-Contract: UXP owns Photoshop API calls, panel lifecycle, DOM events, and status display. Critical recording/export failures and export completion keep the bottom selectable detail notice and also show a native blocking alert so users cannot miss the result. Pure JS domain modules own recorder state transitions, export profile math, path policy, settings parsing, and painting timer rules. Native addon calls route through a single service bridge before entering UI workflow code.
+Contract: UXP owns Photoshop API calls, panel lifecycle, DOM events, and status display. Critical recording/export failures and export completion keep the bottom selectable detail notice and also show a native blocking alert so users cannot miss the result. Scheduled capture treats Photoshop `executeAsModal` host-modal collisions, such as an active Free Transform operation, as transient host-busy state: recording stays active, no blocking failure alert is shown, and the capture is retried shortly. Pure JS domain modules own recorder state transitions, export profile math, path policy, settings parsing, and painting timer rules. Native addon calls route through a single service bridge before entering UI workflow code.
 
 Owners: `uxp/main.js`, `uxp/status-messages.js`, `uxp/panel-view.js`, `uxp/panel-dom.js`, `uxp/panel-styles.js`, `uxp/domain/`, `uxp/services/native-bridge.js`.
 
