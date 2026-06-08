@@ -9,7 +9,7 @@
   },
   "host": {
     "app": "PS",
-    "minVersion": "24.2.0",
+    "minVersion": "24.4.0",
     "data": {
       "apiVersion": 2
     }

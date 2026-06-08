@@ -411,7 +411,7 @@
 
       <h2 id="download">1. 下载哪个版本</h2>
       <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2" target="_blank" rel="noopener">Win OK-Record v1.0.2</a></p>
-      <p><strong>★ 仅支持 Photoshop 2023 24.2.0 或更高版本。</strong></p>
+      <p><strong>★ 仅支持 Photoshop 2023 24.4.0 或更高版本。</strong></p>
       <p>Release 页面里有两个 <code>.ccx</code> 安装文件：</p>
       <ul>
         <li><span class="step-title">OK-Record_with-ffmpeg.ccx</span>：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。</li>
@@ -649,6 +649,9 @@
       <h3>导出失败，提示找不到 FFmpeg</h3>
       <p>说明你使用的是轻量版，并且电脑没有正确安装 FFmpeg。最简单的解决方式是下载 <code>OK-Record_with-ffmpeg.ccx</code> 安装文件。</p>
 
+      <h3>录制失败，提示 Cannot read properties of undefined (reading 'getPixels')</h3>
+      <p>这通常说明当前 Photoshop 版本不支持 OK-Record 使用的正式 Imaging API。请升级到 Photoshop 2023 24.4.0 或更高版本后再使用。</p>
+
       <h3>录制过程中改了画布尺寸怎么办</h3>
       <p>同一比例的画布尺寸变化会在导出时统一缩放。 如果检测到不同比例的序列帧，OK-Record 会让你选择自动补边合并、忽略少数比例帧，或手动清理后再导出。</p>
 
@@ -685,7 +688,7 @@
         "它不是实时录屏，所以视频只记录画布结果，不会录到鼠标、菜单、弹窗或其它屏幕内容。": "It is not a live screen recorder. The video records only the canvas result, not the cursor, menus, pop-ups, or other screen content.",
         "Release 页面里有两个": "The Release page provides two",
         "安装文件：": "installers:",
-        "★ 仅支持 Photoshop 2023 24.2.0 或更高版本。": "★ Only Photoshop 2023 24.2.0 or newer is supported.",
+        "★ 仅支持 Photoshop 2023 24.4.0 或更高版本。": "★ Only Photoshop 2023 24.4.0 or newer is supported.",
         "下载页面：": "Download page:",
         "：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。": ": recommended for most users. FFmpeg is included, so you can export videos immediately after installation.",
         "：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。": ": lightweight version. Use it if FFmpeg is already installed or you know how to configure FFmpeg yourself.",
@@ -827,6 +830,8 @@
         "文件夹查看。": "folder to check.",
         "导出失败，提示找不到 FFmpeg": "Export failed and says FFmpeg cannot be found",
         "说明你使用的是轻量版，并且电脑没有正确安装 FFmpeg。最简单的解决方式是下载": "This means you are using the lightweight version and FFmpeg is not correctly installed on this computer. The simplest fix is to download the",
+        "录制失败，提示 Cannot read properties of undefined (reading 'getPixels')": "Recording failed and says Cannot read properties of undefined (reading 'getPixels')",
+        "这通常说明当前 Photoshop 版本不支持 OK-Record 使用的正式 Imaging API。请升级到 Photoshop 2023 24.4.0 或更高版本后再使用。": "This usually means the current Photoshop version does not support the stable Imaging API used by OK-Record. Upgrade to Photoshop 2023 24.4.0 or newer before using the plugin.",
         "免配置版。": "no-configuration version.",
         "录制过程中改了画布尺寸怎么办": "What if the canvas size changes during recording",
         "同一比例的画布尺寸变化会在导出时统一缩放。 如果检测到不同比例的序列帧，OK-Record 会让你选择自动补边合并、忽略少数比例帧，或手动清理后再导出。": "Canvas size changes with the same aspect ratio are normalized during export. If different aspect ratios are detected, OK-Record asks whether to pad and merge, ignore the smaller ratio group, or clean up manually before exporting.",

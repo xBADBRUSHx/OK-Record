@@ -18,7 +18,7 @@ When the panel opens, the plugin checks the public version. If a newer version i
 
 The current public package is a Windows test build. The release page provides two `.ccx` installers:
 
-★ Only Photoshop 2023 24.2.0 or newer is supported.
+★ Only Photoshop 2023 24.4.0 or newer is supported.
 
 - `OK-Record_with-ffmpeg.ccx`: recommended for most users. FFmpeg is bundled, so video export works out of the box.
 - `OK-Record.ccx`: lightweight installer for users who already have FFmpeg installed or want to configure it themselves.

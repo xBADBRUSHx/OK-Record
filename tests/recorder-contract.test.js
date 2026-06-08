@@ -602,10 +602,12 @@ assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local docume
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
 assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2"'), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
-assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");
-assert(localDocumentation.includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "local documentation must translate the Photoshop version requirement");
-assert(readText("README.md").includes("★ 仅支持 Photoshop 2023 24.2.0 或更高版本。"), "Chinese README must state the Photoshop version requirement in the download section");
-assert(readText("README.en.md").includes("★ Only Photoshop 2023 24.2.0 or newer is supported."), "English README must state the Photoshop version requirement in the download section");
+assert.strictEqual(manifest.host.minVersion, "24.4.0", "manifest minimum Photoshop version must match the stable Imaging API requirement");
+assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.4.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");
+assert(localDocumentation.includes("★ Only Photoshop 2023 24.4.0 or newer is supported."), "local documentation must translate the Photoshop version requirement");
+assert(localDocumentation.includes("Cannot read properties of undefined (reading 'getPixels')"), "local documentation must explain the common Imaging API support failure");
+assert(readText("README.md").includes("★ 仅支持 Photoshop 2023 24.4.0 或更高版本。"), "Chinese README must state the Photoshop version requirement in the download section");
+assert(readText("README.en.md").includes("★ Only Photoshop 2023 24.4.0 or newer is supported."), "English README must state the Photoshop version requirement in the download section");
 assert(readText("README.md").includes("作者目前没有 macOS 开发环境，无法部署和测试 macOS 版本。macOS 用户需要下载源代码自行适配、构建和测试。"), "Chinese README must clearly explain the macOS support boundary");
 assert(readText("README.en.md").includes("The author currently does not have a macOS development environment and cannot deploy or test the macOS version."), "English README must clearly explain the macOS support boundary");
 assert(!localDocumentation.includes("images/01-release-download.png"), "local documentation must not keep the retired Release screenshot placeholder");

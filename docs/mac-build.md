@@ -11,7 +11,7 @@ OK-Record can be tested on macOS from source, but the macOS native plugin binari
 ## Prerequisites
 
 - macOS with Xcode command-line tools.
-- Photoshop 24.2 or later.
+- Photoshop 24.4 or later.
 - UXP Developer Tool 1.7 or later.
 - Adobe UXP Hybrid SDK downloaded separately from Adobe.
 - FFmpeg available from `PATH` as `ffmpeg`.
