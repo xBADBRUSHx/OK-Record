@@ -77,6 +77,7 @@ const FRAME_QUALITY_PRESETS = Object.freeze(settingsModel.FRAME_QUALITY_PRESETS.
 const DEFAULT_EXPORT_CRF = exportProfileModel.DEFAULT_EXPORT_CRF;
 const MIN_EXPORT_DURATION_SECONDS = exportProfileModel.MIN_EXPORT_DURATION_SECONDS;
 const MAX_EXPORT_DURATION_SECONDS = exportProfileModel.MAX_EXPORT_DURATION_SECONDS;
+const MIN_EXPORT_HOLD_SECONDS = exportProfileModel.MIN_EXPORT_HOLD_SECONDS;
 const MAX_EXPORT_HOLD_SECONDS = exportProfileModel.MAX_EXPORT_HOLD_SECONDS;
 const MIN_EXPORT_MAX_WIDTH = exportProfileModel.MIN_EXPORT_MAX_WIDTH;
 const MAX_EXPORT_MAX_WIDTH = exportProfileModel.MAX_EXPORT_MAX_WIDTH;
@@ -97,7 +98,7 @@ const CLEAR_RECORDING_PANEL_MENU_ID = "clearRecordingTimeline";
 const UPDATE_MANIFEST_SCHEMA = "ok-record.update-manifest.v1";
 const UPDATE_MANIFEST_URL = "https://xbadbrushx.github.io/OK-Record/update.json";
 const UPDATE_RELEASES_URL_PREFIX = "https://github.com/xBADBRUSHx/OK-Record/releases/";
-const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2";
+const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3";
 const RECORDING_TIMELINE_ID = "Timeline";
 const STEP_FRAME_FILENAME_PREFIX = "step_";
 const STEP_FRAME_INDEX_DIGITS = 3;
@@ -833,7 +834,7 @@ async function exportSession() {
       await nativeBridge.exportSequence({
         framesDir: recorderState.exportSourceDir,
         aspectRatioMode,
-        holdSeconds: exportProfile.holdSeconds,
+        targetDurationSeconds: exportProfile.durationSeconds,
         outputFps: exportProfile.outputFps,
         maxWidth: exportProfile.maxWidth,
         crf: exportProfile.crf,
@@ -842,7 +843,7 @@ async function exportSession() {
         outputDir: exportContext.outputDir,
         sessionId: recorderState.activeSession.sessionId,
         aspectRatioMode,
-        holdSeconds: exportProfile.holdSeconds,
+        targetDurationSeconds: exportProfile.durationSeconds,
         outputFps: exportProfile.outputFps,
         maxWidth: exportProfile.maxWidth,
         crf: exportProfile.crf,
@@ -2302,7 +2303,6 @@ function readExportProfileFromPanel() {
   const resolutionPreset = readCaptureResolutionPresetFromPanel();
   const maxWidth = resolutionPreset.maxWidth;
   const frameCount = getExportFrameCountForProfile();
-  const holdSeconds = calculateHoldSeconds(durationSeconds, frameCount, outputFps);
   const frameQualityPreset = readFrameQualityPresetFromPanel();
   const exportProfile = exportProfileModel.createExportProfile({
     durationSeconds,
@@ -2320,7 +2320,7 @@ function readExportProfileFromPanel() {
     lastError: "",
   };
   if (frameCount > 0) {
-    nextState.exportHoldSeconds = exportProfile.holdSeconds;
+    nextState.exportHoldSeconds = exportProfile.sourceHoldSeconds;
   }
   setRecorderState(nextState);
   updateHoldSecondsInput(exportProfile.durationSeconds);
@@ -2328,7 +2328,6 @@ function readExportProfileFromPanel() {
 
   return {
     ...exportProfile,
-    holdSeconds,
     frameQualityPreset,
   };
 }
@@ -2386,18 +2385,6 @@ function getExportFrameCountForProfile() {
   return 0;
 }
 
-function calculateHoldSeconds(durationSeconds, frameCount, outputFps) {
-  const timing = exportProfileModel.calculateExportTiming(durationSeconds, frameCount, outputFps);
-
-  if (frameCount > 0 && durationSeconds < timing.minimumDurationSeconds) {
-    throw new Error(`视频时长过短：当前 ${timing.frameCount} 帧、${outputFps} fps 至少需要 ${formatSecondsValue(timing.minimumDurationSeconds)} 秒`);
-  }
-  if (!Number.isFinite(timing.holdSeconds) || timing.holdSeconds <= 0 || timing.holdSeconds > MAX_EXPORT_HOLD_SECONDS) {
-    throw new Error(`计算出的每帧停留必须大于 0 且不超过 ${MAX_EXPORT_HOLD_SECONDS} 秒`);
-  }
-  return timing.holdSeconds;
-}
-
 function updateExportDurationInputs(durationSeconds) {
   const durationParts = exportProfileModel.getDurationParts(durationSeconds);
   if (exportDurationMinutesInputNode) {
@@ -2414,7 +2401,7 @@ function updateHoldSecondsInput(durationSeconds) {
   }
 
   const outputFps = DEFAULT_EXPORT_OUTPUT_FPS;
-  exportHoldSecondsInputNode.min = formatSecondsValue(1 / outputFps);
+  exportHoldSecondsInputNode.min = formatSecondsValue(MIN_EXPORT_HOLD_SECONDS);
   exportHoldSecondsInputNode.max = String(MAX_EXPORT_HOLD_SECONDS);
 
   const frameCount = getExportFrameCountForProfile();
@@ -2423,7 +2410,7 @@ function updateHoldSecondsInput(durationSeconds) {
     return;
   }
   exportHoldSecondsInputNode.value = formatSecondsValue(
-    exportProfileModel.calculateExportTiming(durationSeconds, frameCount, outputFps).holdSeconds,
+    exportProfileModel.calculateExportTiming(durationSeconds, frameCount, outputFps).sourceHoldSeconds,
   );
 }
 
@@ -3196,9 +3183,12 @@ function formatExportProfile(durationSeconds, outputFps, maxWidth) {
     `目标 ${formatIntervalSeconds(durationSeconds)}`,
   ];
   if (frameCount > 0) {
-    fields.push(`每秒约 ${formatNumberValue(timing.sequenceFramesPerSecond)} 张序列帧`);
-    fields.push(`每张约 ${formatSecondsValue(timing.holdSeconds)} 秒`);
-    if (timing.outputFramesPerSequenceFrame >= 1) {
+    fields.push(`源帧约 ${formatNumberValue(timing.sequenceFramesPerSecond)} 张/秒`);
+    fields.push(`每张源帧约 ${formatSecondsValue(timing.sourceHoldSeconds)} 秒`);
+    if (timing.samplingApplied) {
+      fields.push(`均匀抽帧 ${timing.sourceFrameCount} -> ${timing.exportedFrameCount}`);
+      fields.push(`代表帧约 ${formatSecondsValue(timing.exportedHoldSeconds)} 秒`);
+    } else if (timing.outputFramesPerSequenceFrame >= 1) {
       fields.push(`每张约 ${formatNumberValue(timing.outputFramesPerSequenceFrame)} 个视频帧`);
     } else {
       fields.push("每张不足 1 个视频帧");
@@ -3275,15 +3265,14 @@ function handleHoldSecondsChange() {
   try {
     const frameCount = getExportFrameCountForProfile();
     const outputFps = DEFAULT_EXPORT_OUTPUT_FPS;
-    const minHoldSeconds = 1 / outputFps;
     if (exportHoldSecondsInputNode) {
-      exportHoldSecondsInputNode.min = formatSecondsValue(minHoldSeconds);
+      exportHoldSecondsInputNode.min = formatSecondsValue(MIN_EXPORT_HOLD_SECONDS);
       exportHoldSecondsInputNode.max = String(MAX_EXPORT_HOLD_SECONDS);
     }
     const holdSeconds = readBoundedNumber(
       exportHoldSecondsInputNode,
       frameCount > 0 ? recorderState.exportDurationSeconds / frameCount : recorderState.exportHoldSeconds,
-      minHoldSeconds,
+      MIN_EXPORT_HOLD_SECONDS,
       MAX_EXPORT_HOLD_SECONDS,
       "每帧停留（秒）",
     );
@@ -3573,6 +3562,7 @@ function renderPanel() {
       maxIdleCaptureMaxWaitSeconds: MAX_IDLE_CAPTURE_MAX_WAIT_SECONDS,
       minPaintingTimerTimeoutSeconds: MIN_PAINTING_TIMER_TIMEOUT_SECONDS,
       maxPaintingTimerTimeoutSeconds: MAX_PAINTING_TIMER_TIMEOUT_SECONDS,
+      minExportHoldSeconds: MIN_EXPORT_HOLD_SECONDS,
       maxExportHoldSeconds: MAX_EXPORT_HOLD_SECONDS,
       maxExportDurationSeconds: MAX_EXPORT_DURATION_SECONDS,
       secondsPerMinute: SECONDS_PER_MINUTE,

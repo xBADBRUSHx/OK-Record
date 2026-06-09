@@ -2,7 +2,7 @@
   "id": "com.badbrush.okrecord",
   "name": "OK-Record",
   "manifestVersion": 6,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "main.js",
   "featureFlags": {
     "enableAlerts": true

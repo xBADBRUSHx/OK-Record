@@ -7,6 +7,7 @@ const DEFAULT_EXPORT_MAX_WIDTH = 1920;
 const DEFAULT_EXPORT_CRF = 18;
 const MIN_EXPORT_DURATION_SECONDS = 1;
 const MAX_EXPORT_DURATION_SECONDS = 3600;
+const MIN_EXPORT_HOLD_SECONDS = 0.000001;
 const MAX_EXPORT_HOLD_SECONDS = 3600;
 const MIN_EXPORT_MAX_WIDTH = 16;
 const MAX_EXPORT_MAX_WIDTH = 16384;
@@ -40,7 +41,7 @@ function normalizeDurationSeconds(value) {
 }
 
 function normalizeHoldSeconds(value) {
-  return clampNumber(value, DEFAULT_EXPORT_HOLD_SECONDS, 0.001, MAX_EXPORT_HOLD_SECONDS);
+  return clampNumber(value, DEFAULT_EXPORT_HOLD_SECONDS, MIN_EXPORT_HOLD_SECONDS, MAX_EXPORT_HOLD_SECONDS);
 }
 
 function normalizeOutputFps(value) {
@@ -66,34 +67,50 @@ function getDurationParts(durationSeconds) {
   return { minutes, seconds };
 }
 
+function calculateMaxExportedFrameCount(durationSeconds, outputFps) {
+  const normalizedDurationSeconds = normalizeDurationSeconds(durationSeconds);
+  const normalizedOutputFps = normalizeOutputFps(outputFps);
+  return Math.max(1, Math.floor((normalizedDurationSeconds * normalizedOutputFps) + 0.0000001));
+}
+
 function calculateExportTiming(durationSeconds, frameCount, outputFps) {
   const normalizedDurationSeconds = normalizeDurationSeconds(durationSeconds);
   const normalizedOutputFps = normalizeOutputFps(outputFps);
   const numericFrameCount = Math.floor(Number(frameCount));
-  const exportFrameCount = Number.isFinite(numericFrameCount) && numericFrameCount > 0 ? numericFrameCount : 0;
-  const safeFrameCount = Math.max(1, exportFrameCount);
-  const holdSeconds = normalizedDurationSeconds / safeFrameCount;
+  const sourceFrameCount = Number.isFinite(numericFrameCount) && numericFrameCount > 0 ? numericFrameCount : 0;
+  const safeSourceFrameCount = Math.max(1, sourceFrameCount);
+  const maxExportedFrameCount = calculateMaxExportedFrameCount(normalizedDurationSeconds, normalizedOutputFps);
+  const exportedFrameCount = sourceFrameCount > 0 ?
+    Math.min(sourceFrameCount, maxExportedFrameCount) :
+    0;
+  const safeExportedFrameCount = Math.max(1, exportedFrameCount);
+  const sourceHoldSeconds = normalizedDurationSeconds / safeSourceFrameCount;
+  const exportedHoldSeconds = normalizedDurationSeconds / safeExportedFrameCount;
 
   return {
     durationSeconds: normalizedDurationSeconds,
-    frameCount: safeFrameCount,
-    sourceFrameCount: exportFrameCount,
+    frameCount: safeSourceFrameCount,
+    sourceFrameCount,
+    exportedFrameCount,
+    skippedFrameCount: Math.max(0, sourceFrameCount - exportedFrameCount),
+    maxExportedFrameCount,
+    samplingApplied: sourceFrameCount > exportedFrameCount && exportedFrameCount > 0,
     outputFps: normalizedOutputFps,
-    holdSeconds,
-    sequenceFramesPerSecond: exportFrameCount > 0 ? exportFrameCount / normalizedDurationSeconds : 0,
-    outputFramesPerSequenceFrame: holdSeconds * normalizedOutputFps,
-    minimumDurationSeconds: safeFrameCount / normalizedOutputFps,
+    holdSeconds: sourceHoldSeconds,
+    sourceHoldSeconds,
+    exportedHoldSeconds,
+    sequenceFramesPerSecond: sourceFrameCount > 0 ? sourceFrameCount / normalizedDurationSeconds : 0,
+    exportedFramesPerSecond: exportedFrameCount > 0 ? exportedFrameCount / normalizedDurationSeconds : 0,
+    outputFramesPerSequenceFrame: sourceHoldSeconds * normalizedOutputFps,
+    outputFramesPerExportedFrame: exportedHoldSeconds * normalizedOutputFps,
+    fullFrameMinimumDurationSeconds: sourceFrameCount > 0 ? sourceFrameCount / normalizedOutputFps : 1 / normalizedOutputFps,
+    minimumDurationSeconds: 1 / normalizedOutputFps,
   };
 }
 
 function calculateHoldSeconds(durationSeconds, frameCount, outputFps) {
   const timing = calculateExportTiming(durationSeconds, frameCount, outputFps);
 
-  if (timing.sourceFrameCount > 0 && timing.durationSeconds < timing.minimumDurationSeconds) {
-    throw new Error(
-      `Export duration is too short for ${timing.frameCount} frames at ${timing.outputFps} fps.`,
-    );
-  }
   if (!Number.isFinite(timing.holdSeconds) || timing.holdSeconds <= 0 || timing.holdSeconds > MAX_EXPORT_HOLD_SECONDS) {
     throw new Error(`Hold seconds must be greater than 0 and no more than ${MAX_EXPORT_HOLD_SECONDS}.`);
   }
@@ -114,9 +131,18 @@ function createExportProfile(input = {}) {
     crf: normalizeCrf(input.crf),
     frameCount: timing.frameCount,
     sourceFrameCount: timing.sourceFrameCount,
+    exportedFrameCount: timing.exportedFrameCount,
+    skippedFrameCount: timing.skippedFrameCount,
+    maxExportedFrameCount: timing.maxExportedFrameCount,
+    samplingApplied: timing.samplingApplied,
+    sourceHoldSeconds: timing.sourceHoldSeconds,
+    exportedHoldSeconds: timing.exportedHoldSeconds,
     minimumDurationSeconds: timing.minimumDurationSeconds,
+    fullFrameMinimumDurationSeconds: timing.fullFrameMinimumDurationSeconds,
     sequenceFramesPerSecond: timing.sequenceFramesPerSecond,
+    exportedFramesPerSecond: timing.exportedFramesPerSecond,
     outputFramesPerSequenceFrame: timing.outputFramesPerSequenceFrame,
+    outputFramesPerExportedFrame: timing.outputFramesPerExportedFrame,
   };
 }
 
@@ -128,6 +154,7 @@ module.exports = {
   DEFAULT_EXPORT_CRF,
   MIN_EXPORT_DURATION_SECONDS,
   MAX_EXPORT_DURATION_SECONDS,
+  MIN_EXPORT_HOLD_SECONDS,
   MAX_EXPORT_HOLD_SECONDS,
   MIN_EXPORT_MAX_WIDTH,
   MAX_EXPORT_MAX_WIDTH,
@@ -135,6 +162,7 @@ module.exports = {
   MAX_EXPORT_OUTPUT_FPS,
   MIN_EXPORT_CRF,
   MAX_EXPORT_CRF,
+  calculateMaxExportedFrameCount,
   calculateExportTiming,
   calculateHoldSeconds,
   createExportProfile,

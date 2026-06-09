@@ -1,8 +1,8 @@
 {
   "schema": "ok-record.update-manifest.v1",
-  "version": "1.0.2",
-  "releaseDate": "2026-06-03",
-  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2",
-  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.2/OK-Record_with-ffmpeg.ccx",
-  "summary": "v1.0.2 修复 RGB/RGBA 混合时间线无法继续录制的问题，新增面板菜单清空序列帧，并要求自动录制绑定本地 PSD/PSB 文档。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
+  "version": "1.0.3",
+  "releaseDate": "2026-06-09",
+  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.3/OK-Record_with-ffmpeg.ccx",
+  "summary": "v1.0.3 优化导出视频时长控制：帧数很多时会按目标时长均匀抽取代表帧，保留首尾帧，并在导出详情显示源帧数、实际导出帧数和跳过帧数。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
 }

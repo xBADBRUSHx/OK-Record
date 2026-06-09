@@ -36,6 +36,7 @@ function makeRenderOptions(document) {
       maxIdleCaptureMaxWaitSeconds: 3600,
       minPaintingTimerTimeoutSeconds: 1,
       maxPaintingTimerTimeoutSeconds: 86400,
+      minExportHoldSeconds: 0.000001,
       maxExportHoldSeconds: 3600,
       maxExportDurationSeconds: 3600,
       secondsPerMinute: 60,

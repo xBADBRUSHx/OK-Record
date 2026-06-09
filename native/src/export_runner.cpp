@@ -1,9 +1,12 @@
 #include "export_runner.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <ctime>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 
@@ -68,6 +71,61 @@ std::string BuildImageSequencePattern(const std::string& prefix, uint32_t indexD
     std::ostringstream pattern;
     pattern << prefix << "%0" << indexDigits << "d" << extension;
     return pattern.str();
+}
+
+uint32_t CalculateMaxExportedFrameCount(double targetDurationSeconds, uint32_t outputFps) {
+    if (!std::isfinite(targetDurationSeconds) || targetDurationSeconds <= 0.0) {
+        throw std::runtime_error("Export targetDurationSeconds must be greater than zero");
+    }
+    if (outputFps == 0) {
+        throw std::runtime_error("Export outputFps must be greater than zero");
+    }
+
+    const double rawFrameCount = std::floor((targetDurationSeconds * static_cast<double>(outputFps)) + 0.0000001);
+    if (rawFrameCount < 1.0) {
+        return 1;
+    }
+    if (rawFrameCount > static_cast<double>(std::numeric_limits<uint32_t>::max())) {
+        throw std::runtime_error("Export target frame count is too large");
+    }
+    return static_cast<uint32_t>(rawFrameCount);
+}
+
+std::vector<CommittedFrameRecord> SelectRepresentativeFrames(
+    const std::vector<CommittedFrameRecord>& frames,
+    uint32_t maxFrameCount) {
+    if (frames.empty()) {
+        return {};
+    }
+    if (maxFrameCount == 0) {
+        throw std::runtime_error("Export representative frame count must be greater than zero");
+    }
+    if (frames.size() <= maxFrameCount) {
+        return frames;
+    }
+    if (maxFrameCount == 1) {
+        return {frames.back()};
+    }
+
+    std::vector<CommittedFrameRecord> selectedFrames;
+    selectedFrames.reserve(maxFrameCount);
+    const double sourceLastIndex = static_cast<double>(frames.size() - 1);
+    const double selectedLastIndex = static_cast<double>(maxFrameCount - 1);
+    size_t previousSourceIndex = 0;
+    for (uint32_t selectedIndex = 0; selectedIndex < maxFrameCount; ++selectedIndex) {
+        size_t sourceIndex = static_cast<size_t>(std::llround((static_cast<double>(selectedIndex) * sourceLastIndex) / selectedLastIndex));
+        if (!selectedFrames.empty() && sourceIndex <= previousSourceIndex) {
+            sourceIndex = previousSourceIndex + 1;
+        }
+        if (sourceIndex >= frames.size()) {
+            sourceIndex = frames.size() - 1;
+        }
+        selectedFrames.push_back(frames[sourceIndex]);
+        previousSourceIndex = sourceIndex;
+    }
+    selectedFrames.front() = frames.front();
+    selectedFrames.back() = frames.back();
+    return selectedFrames;
 }
 
 #ifdef _WIN32
@@ -349,8 +407,8 @@ NativeFfmpegExportResult RunNativeFfmpegExport(
     if (frameSet.frames.empty()) {
         throw std::runtime_error("Export frame set is empty");
     }
-    if (request.holdSeconds <= 0.0) {
-        throw std::runtime_error("Export holdSeconds must be greater than zero");
+    if (!std::isfinite(request.targetDurationSeconds) || request.targetDurationSeconds <= 0.0) {
+        throw std::runtime_error("Export targetDurationSeconds must be greater than zero");
     }
 
     const fs::path ffmpegPath = ResolveFfmpegPath();
@@ -371,17 +429,30 @@ NativeFfmpegExportResult RunNativeFfmpegExport(
         throw std::runtime_error("Export staged input already exists: " + PathToUtf8(stagedInputDir));
     }
 
-    const double inputFps = 1.0 / request.holdSeconds;
+    const uint32_t sourceFrameCount = static_cast<uint32_t>(frameSet.frames.size());
+    const uint32_t maxExportedFrameCount = CalculateMaxExportedFrameCount(request.targetDurationSeconds, request.outputFps);
+    const std::vector<CommittedFrameRecord> exportFrames = SelectRepresentativeFrames(frameSet.frames, maxExportedFrameCount);
+    if (exportFrames.empty()) {
+        throw std::runtime_error("Export representative frame set is empty");
+    }
+    const uint32_t exportedFrameCount = static_cast<uint32_t>(exportFrames.size());
+    const double holdSeconds = request.targetDurationSeconds / static_cast<double>(exportedFrameCount);
+    if (!std::isfinite(holdSeconds) || holdSeconds <= 0.0) {
+        throw std::runtime_error("Export calculated holdSeconds must be greater than zero");
+    }
+    const bool samplingApplied = exportedFrameCount < sourceFrameCount;
+    const bool stageInputSequence = frameSet.stageInputSequence || samplingApplied;
+    const double inputFps = 1.0 / holdSeconds;
     const std::string filter = BuildExportFilter(frameSet, request.outputFps);
     fs::path inputFramesDir = frameSet.framesDir;
     std::string inputFilenamePrefix = frameSet.filenamePrefix;
     uint32_t inputIndexDigits = frameSet.indexDigits;
-    uint32_t inputStartNumber = frameSet.frames.front().frameIndex;
+    uint32_t inputStartNumber = exportFrames.front().frameIndex;
 
-    if (frameSet.stageInputSequence) {
+    if (stageInputSequence) {
         fs::create_directories(stagedInputDir);
         uint32_t stagedFrameIndex = 1;
-        for (const CommittedFrameRecord& frame : frameSet.frames) {
+        for (const CommittedFrameRecord& frame : exportFrames) {
             const std::string stagedFrameName = FormatFrameName(stagedFrameIndex);
             fs::copy_file(
                 frame.framePath,
@@ -439,12 +510,12 @@ NativeFfmpegExportResult RunNativeFfmpegExport(
     });
 
     const uint32_t exitCode = RunProcessToLog(ffmpegPath, command, logPath);
-    const double targetDurationSeconds = static_cast<double>(frameSet.frames.size()) * request.holdSeconds;
+    const double targetDurationSeconds = static_cast<double>(exportedFrameCount) * holdSeconds;
     if (exitCode != 0) {
         if (fs::exists(tempOutputPath)) {
             fs::remove(tempOutputPath);
         }
-        if (frameSet.stageInputSequence) {
+        if (stageInputSequence) {
             std::error_code cleanupError;
             fs::remove_all(stagedInputDir, cleanupError);
         }
@@ -454,14 +525,18 @@ NativeFfmpegExportResult RunNativeFfmpegExport(
             ". Progress: " + PathToUtf8(progressPath));
     }
     if (!fs::exists(tempOutputPath)) {
+        if (stageInputSequence) {
+            std::error_code cleanupError;
+            fs::remove_all(stagedInputDir, cleanupError);
+        }
         throw std::runtime_error("FFmpeg did not create export output. Log: " + PathToUtf8(logPath));
     }
     const FfmpegExportProgress progress = ParseFfmpegProgressFile(
         progressPath,
         targetDurationSeconds,
-        static_cast<uint32_t>(frameSet.frames.size()));
+        exportedFrameCount);
     fs::rename(tempOutputPath, finalOutputPath);
-    if (frameSet.stageInputSequence) {
+    if (stageInputSequence) {
         std::error_code cleanupError;
         fs::remove_all(stagedInputDir, cleanupError);
     }
@@ -472,7 +547,12 @@ NativeFfmpegExportResult RunNativeFfmpegExport(
         logPath,
         progressPath,
         filter,
+        holdSeconds,
         targetDurationSeconds,
+        sourceFrameCount,
+        exportedFrameCount,
+        sourceFrameCount - exportedFrameCount,
+        samplingApplied,
         progress,
     };
 }

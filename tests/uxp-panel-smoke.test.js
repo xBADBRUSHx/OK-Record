@@ -327,9 +327,9 @@ async function run() {
       async json() {
         return {
           schema: "ok-record.update-manifest.v1",
-          version: "1.0.2",
-          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2",
-          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.2/OK-Record_with-ffmpeg.ccx",
+          version: "1.0.3",
+          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.3/OK-Record_with-ffmpeg.ccx",
           summary: "测试更新提醒",
         };
       },
@@ -494,20 +494,27 @@ async function run() {
 
       const recordingRoot = path.join(request.outputDir, "延时录制_Recordings");
       const exportsRoot = path.join(recordingRoot, "exports");
+      const targetDurationSeconds = Number(request.targetDurationSeconds) || 10;
+      const outputFps = Number(request.outputFps) || 30;
+      const exportedFrameCount = Math.max(1, Math.min(writeFrameCount, Math.floor(targetDurationSeconds * outputFps)));
       return {
         schema: contract.export.schema,
         sourceType: "timeline",
         sourcePath: recordingRoot,
         sessionId: request.sessionId || "Timeline",
         frameCount: writeFrameCount,
-        holdSeconds: Number(request.holdSeconds) || 0.1,
-        outputFps: Number(request.outputFps) || 30,
+        sourceFrameCount: writeFrameCount,
+        exportedFrameCount,
+        skippedFrameCount: Math.max(0, writeFrameCount - exportedFrameCount),
+        samplingApplied: exportedFrameCount < writeFrameCount,
+        holdSeconds: targetDurationSeconds / exportedFrameCount,
+        outputFps,
         outputWidth: 1920,
         outputHeight: 1080,
         outputPath: path.join(exportsRoot, "OK-Record_timelapse_test.mp4"),
         logPath: path.join(exportsRoot, "export.log"),
         progressPath: path.join(exportsRoot, "progress.log"),
-        targetDurationSeconds: Math.max(0.1, writeFrameCount * (Number(request.holdSeconds) || 0.1)),
+        targetDurationSeconds,
         inputFrameStorageFormat: "jpeg",
         inputFrameExtension: ".jpg",
         progressParsed: true,
@@ -517,20 +524,26 @@ async function run() {
     },
     export_sequence(request) {
       addonCalls.exportSequence += 1;
+      const targetDurationSeconds = Number(request.targetDurationSeconds) || 10;
+      const outputFps = Number(request.outputFps) || 30;
       return {
         schema: contract.export.schema,
         sourceType: "directory",
         sourcePath: request.framesDir,
         sessionId: "",
         frameCount: 1,
-        holdSeconds: Number(request.holdSeconds) || 0.1,
-        outputFps: Number(request.outputFps) || 30,
+        sourceFrameCount: 1,
+        exportedFrameCount: 1,
+        skippedFrameCount: 0,
+        samplingApplied: false,
+        holdSeconds: targetDurationSeconds,
+        outputFps,
         outputWidth: 1920,
         outputHeight: 1080,
         outputPath: path.join(path.dirname(request.framesDir), "exports", "OK-Record_timelapse_test.mp4"),
         logPath: path.join(path.dirname(request.framesDir), "exports", "export.log"),
         progressPath: path.join(path.dirname(request.framesDir), "exports", "progress.log"),
-        targetDurationSeconds: Number(request.holdSeconds) || 0.1,
+        targetDurationSeconds,
         inputFrameStorageFormat: "jpeg",
         inputFrameExtension: ".jpg",
         progressParsed: true,
@@ -666,7 +679,7 @@ async function run() {
   assert.strictEqual(openExternalCalls.length, 1, "download-page flyout menu must open one external URL");
   assert.strictEqual(
     openExternalCalls[0].url,
-    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2",
+    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
     "download-page flyout menu must open the current public release before a newer manifest is fetched",
   );
 
@@ -703,7 +716,7 @@ async function run() {
   assert.strictEqual(openPathCalls.length, 1, "only the panel flyout documentation action should open documentation");
   assert.strictEqual(fetchCalls.length, 1, "panel show must fetch the static update manifest once");
   assert.strictEqual(fetchCalls[0], "https://xbadbrushx.github.io/OK-Record/update.json", "panel update check must read the GitHub Pages update manifest");
-  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.2", "newer update manifest must show an update notice");
+  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.3", "newer update manifest must show an update notice");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：1.0.0"), "update notice must show the installed plugin version");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("面板菜单：下载页_Download Page"), "update notice must point users to the download-page menu action");
 

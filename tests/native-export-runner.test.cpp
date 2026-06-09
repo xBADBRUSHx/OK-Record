@@ -284,7 +284,7 @@ ok_record::NativeFfmpegExportResult RunExportSmoke(
     frameSet.sourcePath = framesDir;
 
     NativeFfmpegExportRequest request;
-    request.holdSeconds = 0.5;
+    request.targetDurationSeconds = 1.0;
     request.outputFps = 2;
     request.crf = 23;
     request.exportIdSuffix = sessionName;
@@ -298,7 +298,12 @@ void AssertExportResult(const ok_record::NativeFfmpegExportResult& result) {
     assert(fs::exists(result.logPath));
     assert(fs::exists(result.progressPath));
     assert(result.filter == "fps=2,format=yuv420p");
+    assert(result.holdSeconds == 0.5);
     assert(result.targetDurationSeconds == 1.0);
+    assert(result.sourceFrameCount == 2);
+    assert(result.exportedFrameCount == 2);
+    assert(result.skippedFrameCount == 0);
+    assert(!result.samplingApplied);
     assert(result.progress.parsed);
     assert(result.progress.status == "end");
     assert(result.progress.percent == 100.0);
@@ -307,6 +312,76 @@ void AssertExportResult(const ok_record::NativeFfmpegExportResult& result) {
 
     const std::string progressText = ReadText(result.progressPath);
     assert(progressText.find("progress=end") != std::string::npos);
+}
+
+ok_record::NativeFfmpegExportResult RunSamplingExportSmoke(const fs::path& root) {
+    using namespace ok_record;
+
+    const fs::path sessionRoot = root / "sampled-png-session";
+    const fs::path framesDir = sessionRoot / "frames";
+    const fs::path tempDir = sessionRoot / "temp";
+    const fs::path exportsDir = sessionRoot / "exports";
+    const fs::path logsDir = sessionRoot / "logs";
+    fs::create_directories(framesDir);
+    fs::create_directories(tempDir);
+    fs::create_directories(exportsDir);
+    fs::create_directories(logsDir);
+
+    std::vector<CommittedFrameRecord> frames;
+    for (uint32_t frameIndex = 1; frameIndex <= 5; ++frameIndex) {
+        const std::string frameName = FormatFrameName(frameIndex);
+        const fs::path framePath = framesDir / (frameName + kPngFrameExtension);
+        WriteBytes(framePath, MakeTinyPng());
+        frames.push_back({frameIndex, frameName, framePath, {}, {}});
+    }
+
+    FrameMetadata metadata;
+    metadata.width = 2;
+    metadata.height = 2;
+    metadata.components = 4;
+    metadata.componentSize = 8;
+    metadata.pixelFormat = "encoded";
+    metadata.frameStorageFormat = kFrameStoragePng;
+    metadata.frameExtension = kPngFrameExtension;
+
+    ExportFrameSet frameSet;
+    frameSet.sessionRoot = sessionRoot;
+    frameSet.framesDir = framesDir;
+    frameSet.tempDir = tempDir;
+    frameSet.exportsDir = exportsDir;
+    frameSet.logsDir = logsDir;
+    frameSet.frames = frames;
+    frameSet.metadata = metadata;
+    frameSet.storageSpec = {kFrameStoragePng, kPngFrameExtension};
+    frameSet.outputWidth = 2;
+    frameSet.outputHeight = 2;
+    frameSet.filenamePrefix = "frame_";
+    frameSet.indexDigits = 6;
+    frameSet.sourceType = "test";
+    frameSet.sourcePath = framesDir;
+
+    NativeFfmpegExportRequest request;
+    request.targetDurationSeconds = 1.0;
+    request.outputFps = 2;
+    request.crf = 23;
+    request.exportIdSuffix = "sampled-png-session";
+
+    return RunNativeFfmpegExport(frameSet, request);
+}
+
+void AssertSamplingExportResult(const ok_record::NativeFfmpegExportResult& result) {
+    assert(fs::exists(result.outputPath));
+    assert(fs::file_size(result.outputPath) > 0);
+    assert(result.filter == "fps=2,format=yuv420p");
+    assert(result.holdSeconds == 0.5);
+    assert(result.targetDurationSeconds == 1.0);
+    assert(result.sourceFrameCount == 5);
+    assert(result.exportedFrameCount == 2);
+    assert(result.skippedFrameCount == 3);
+    assert(result.samplingApplied);
+    assert(result.progress.parsed);
+    assert(result.progress.status == "end");
+    assert(result.progress.targetDurationSeconds == 1.0);
 }
 
 }  // namespace
@@ -351,6 +426,7 @@ int main() {
             }));
         AssertExportResult(RunExportSmoke(root, "jpeg-session", kFrameStorageJpeg, kJpegFrameExtension, MakeTinyJpeg(), MakeTinyJpeg()));
         AssertExportResult(RunExportSmoke(root, "png-session", kFrameStoragePng, kPngFrameExtension, MakeTinyPng(), MakeTinyPng()));
+        AssertSamplingExportResult(RunSamplingExportSmoke(root));
 
         fs::remove_all(root);
         std::cout << "native export runner tests passed\n";

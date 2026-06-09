@@ -329,7 +329,7 @@ function createExportGroup({ refs, state, ranges, presets, buttonStates, handler
   const holdSecondsField = createSecondField({
     label: "每帧停留",
     value: state.exportHoldSeconds,
-    min: 0.001,
+    min: ranges.minExportHoldSeconds,
     max: ranges.maxExportHoldSeconds,
     step: 0.001,
     onInput: handlers.onHoldSecondsChange,

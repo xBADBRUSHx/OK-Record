@@ -33,7 +33,7 @@ struct ExportFrameSet {
 };
 
 struct NativeFfmpegExportRequest {
-    double holdSeconds = 1.0;
+    double targetDurationSeconds = 10.0;
     uint32_t outputFps = 30;
     uint32_t crf = 18;
     std::string exportIdSuffix;
@@ -45,7 +45,12 @@ struct NativeFfmpegExportResult {
     fs::path logPath;
     fs::path progressPath;
     std::string filter;
+    double holdSeconds = 0.0;
     double targetDurationSeconds = 0.0;
+    uint32_t sourceFrameCount = 0;
+    uint32_t exportedFrameCount = 0;
+    uint32_t skippedFrameCount = 0;
+    bool samplingApplied = false;
     FfmpegExportProgress progress;
 };
 

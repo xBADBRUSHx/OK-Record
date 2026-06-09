@@ -410,7 +410,7 @@
       </div>
 
       <h2 id="download">1. 下载哪个版本</h2>
-      <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2" target="_blank" rel="noopener">Win OK-Record v1.0.2</a></p>
+      <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3" target="_blank" rel="noopener">Win OK-Record v1.0.3</a></p>
       <p><strong>★ 仅支持 Photoshop 2023 24.4.0 或更高版本。</strong></p>
       <p>Release 页面里有两个 <code>.ccx</code> 安装文件：</p>
       <ul>
@@ -602,8 +602,8 @@
         <figcaption>选择要导出的序列帧目录。</figcaption>
       </figure>
       <ul>
-        <li><span class="step-title">每帧停留</span>：决定每张序列帧在视频里停留多久。数值越大，画面停留越久，视频节奏越慢。</li>
-        <li><span class="step-title">视频时长</span>：根据序列帧数量反推每帧停留时间，适合想直接控制最终视频长度时使用。</li>
+        <li><span class="step-title">每帧停留</span>：根据当前源帧数量反推视频时长。大量源帧导出为短视频时，OK-Record 会自动均匀抽取代表帧。</li>
+        <li><span class="step-title">视频时长</span>：优先控制最终视频长度。源帧太多时会保留首尾帧并均匀抽取中间帧，不会强制导出超长视频。</li>
         <li><span class="step-title">质量预设</span>：控制视频压缩质量。质量越高，画面越清晰，文件也会更大。</li>
         <li><span class="step-title">分辨率</span>：控制导出视频的最大尺寸。分辨率越高，细节越完整，导出文件也会更大。</li>
       </ul>
@@ -796,9 +796,9 @@
         "选择要导出的序列帧目录。": "Choose the image sequence folder to export.",
         "截图待放：选择要导出的序列帧目录。": "Screenshot placeholder: choose the image sequence folder to export.",
         "每帧停留": "Hold per Frame",
-        "：决定每张序列帧在视频里停留多久。数值越大，画面停留越久，视频节奏越慢。": ": controls how long each image sequence frame stays in the video. Higher values make frames hold longer and slow down the video rhythm.",
+        "：根据当前源帧数量反推视频时长。大量源帧导出为短视频时，OK-Record 会自动均匀抽取代表帧。": ": calculates the video duration from the current source frame count. When many source frames are exported as a short video, OK-Record automatically samples representative frames evenly.",
         "视频时长": "Video Duration",
-        "：根据序列帧数量反推每帧停留时间，适合想直接控制最终视频长度时使用。": ": calculates the hold time from the frame count. Use this when you want to control the final video length directly.",
+        "：优先控制最终视频长度。源帧太多时会保留首尾帧并均匀抽取中间帧，不会强制导出超长视频。": ": prioritizes the final video length. If there are too many source frames, the first and last frames are kept while middle frames are sampled evenly, so export is not forced into an overly long video.",
         "质量预设": "Quality Preset",
         "：控制视频压缩质量。质量越高，画面越清晰，文件也会更大。": ": controls video compression quality. Higher quality keeps the image clearer and creates a larger file.",
         "分辨率": "Resolution",

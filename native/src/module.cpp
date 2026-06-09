@@ -67,7 +67,7 @@ struct ExportRequest {
     std::string outputDir;
     std::string sessionId;
     std::string aspectRatioMode = "strict";
-    double holdSeconds = 1.0;
+    double targetDurationSeconds = 10.0;
     uint32_t outputFps = 30;
     uint32_t maxWidth = 1920;
     uint32_t crf = 18;
@@ -76,7 +76,7 @@ struct ExportRequest {
 struct SequenceExportRequest {
     std::string framesDir;
     std::string aspectRatioMode = "strict";
-    double holdSeconds = 1.0;
+    double targetDurationSeconds = 10.0;
     uint32_t outputFps = 30;
     uint32_t maxWidth = 1920;
     uint32_t crf = 18;
@@ -397,7 +397,7 @@ ExportRequest ReadExportRequest(addon_env env, addon_value requestValue) {
     request.outputDir = GetStringProperty(env, requestValue, "outputDir");
     request.sessionId = GetStringProperty(env, requestValue, "sessionId");
     request.aspectRatioMode = GetOptionalStringProperty(env, requestValue, "aspectRatioMode", "strict");
-    request.holdSeconds = GetDoubleProperty(env, requestValue, "holdSeconds");
+    request.targetDurationSeconds = GetDoubleProperty(env, requestValue, "targetDurationSeconds");
     request.outputFps = GetUInt32Property(env, requestValue, "outputFps");
     request.maxWidth = GetUInt32Property(env, requestValue, "maxWidth");
     request.crf = GetUInt32Property(env, requestValue, "crf");
@@ -414,8 +414,8 @@ ExportRequest ReadExportRequest(addon_env env, addon_value requestValue) {
     if (!IsSupportedAspectRatioMode(request.aspectRatioMode)) {
         throw std::runtime_error("export_session aspectRatioMode must be strict, pad, or majority");
     }
-    if (!std::isfinite(request.holdSeconds) || request.holdSeconds <= 0 || request.holdSeconds > 3600) {
-        throw std::runtime_error("export_session holdSeconds must be > 0 and <= 3600");
+    if (!std::isfinite(request.targetDurationSeconds) || request.targetDurationSeconds <= 0 || request.targetDurationSeconds > 3600) {
+        throw std::runtime_error("export_session targetDurationSeconds must be > 0 and <= 3600");
     }
     if (request.outputFps == 0 || request.outputFps > 120) {
         throw std::runtime_error("export_session outputFps must be between 1 and 120");
@@ -439,7 +439,7 @@ SequenceExportRequest ReadSequenceExportRequest(addon_env env, addon_value reque
     SequenceExportRequest request;
     request.framesDir = GetStringProperty(env, requestValue, "framesDir");
     request.aspectRatioMode = GetOptionalStringProperty(env, requestValue, "aspectRatioMode", "strict");
-    request.holdSeconds = GetDoubleProperty(env, requestValue, "holdSeconds");
+    request.targetDurationSeconds = GetDoubleProperty(env, requestValue, "targetDurationSeconds");
     request.outputFps = GetUInt32Property(env, requestValue, "outputFps");
     request.maxWidth = GetUInt32Property(env, requestValue, "maxWidth");
     request.crf = GetUInt32Property(env, requestValue, "crf");
@@ -450,8 +450,8 @@ SequenceExportRequest ReadSequenceExportRequest(addon_env env, addon_value reque
     if (!IsSupportedAspectRatioMode(request.aspectRatioMode)) {
         throw std::runtime_error("export_sequence aspectRatioMode must be strict, pad, or majority");
     }
-    if (!std::isfinite(request.holdSeconds) || request.holdSeconds <= 0 || request.holdSeconds > 3600) {
-        throw std::runtime_error("export_sequence holdSeconds must be > 0 and <= 3600");
+    if (!std::isfinite(request.targetDurationSeconds) || request.targetDurationSeconds <= 0 || request.targetDurationSeconds > 3600) {
+        throw std::runtime_error("export_sequence targetDurationSeconds must be > 0 and <= 3600");
     }
     if (request.outputFps == 0 || request.outputFps > 120) {
         throw std::runtime_error("export_sequence outputFps must be between 1 and 120");
@@ -1255,8 +1255,13 @@ addon_value CreateNativeExportResultValue(
     SetPathProperty(env, result, "outputPath", exportResult.outputPath);
     SetPathProperty(env, result, "logPath", exportResult.logPath);
     SetPathProperty(env, result, "progressPath", exportResult.progressPath);
-    SetNumberProperty(env, result, "frameCount", static_cast<double>(frameSet.frames.size()));
-    SetNumberProperty(env, result, "holdSeconds", request.holdSeconds);
+    SetNumberProperty(env, result, "frameCount", exportResult.sourceFrameCount);
+    SetNumberProperty(env, result, "sourceFrameCount", exportResult.sourceFrameCount);
+    SetNumberProperty(env, result, "exportedFrameCount", exportResult.exportedFrameCount);
+    SetNumberProperty(env, result, "skippedFrameCount", exportResult.skippedFrameCount);
+    SetBoolProperty(env, result, "samplingApplied", exportResult.samplingApplied);
+    SetNumberProperty(env, result, "holdSeconds", exportResult.holdSeconds);
+    SetNumberProperty(env, result, "exportedFrameHoldSeconds", exportResult.holdSeconds);
     SetNumberProperty(env, result, "targetDurationSeconds", exportResult.targetDurationSeconds);
     SetNumberProperty(env, result, "outputFps", request.outputFps);
     SetNumberProperty(env, result, "sourceWidth", frameSet.metadata.width);
@@ -1557,7 +1562,7 @@ addon_value ExportSession(addon_env env, addon_callback_info info) {
         size_t argc = 1;
         Check(UxpAddonApis.uxp_addon_get_cb_info(env, info, &argc, args, nullptr, nullptr));
         if (argc != 1) {
-            throw std::runtime_error("export_session({ outputDir, sessionId, aspectRatioMode, holdSeconds, outputFps, maxWidth, crf }) expects 1 argument");
+            throw std::runtime_error("export_session({ outputDir, sessionId, aspectRatioMode, targetDurationSeconds, outputFps, maxWidth, crf }) expects 1 argument");
         }
 
         const ExportRequest request = ReadExportRequest(env, args[0]);
@@ -1567,7 +1572,7 @@ addon_value ExportSession(addon_env env, addon_callback_info info) {
         frameSetRequest.maxWidth = request.maxWidth;
         const ExportFrameSet frameSet = BuildTimelineExportFrameSet(frameSetRequest);
         NativeFfmpegExportRequest exportRequest;
-        exportRequest.holdSeconds = request.holdSeconds;
+        exportRequest.targetDurationSeconds = request.targetDurationSeconds;
         exportRequest.outputFps = request.outputFps;
         exportRequest.crf = request.crf;
         exportRequest.exportIdSuffix = FormatFrameName(frameSet.frames.back().frameIndex);
@@ -1586,7 +1591,7 @@ addon_value ExportSequence(addon_env env, addon_callback_info info) {
         size_t argc = 1;
         Check(UxpAddonApis.uxp_addon_get_cb_info(env, info, &argc, args, nullptr, nullptr));
         if (argc != 1) {
-            throw std::runtime_error("export_sequence({ framesDir, holdSeconds, outputFps, maxWidth, crf }) expects 1 argument");
+            throw std::runtime_error("export_sequence({ framesDir, targetDurationSeconds, outputFps, maxWidth, crf }) expects 1 argument");
         }
 
         const SequenceExportRequest request = ReadSequenceExportRequest(env, args[0]);
@@ -1596,7 +1601,7 @@ addon_value ExportSequence(addon_env env, addon_callback_info info) {
         frameSetRequest.maxWidth = request.maxWidth;
         const ExportFrameSet frameSet = BuildSequenceExportFrameSet(frameSetRequest);
         NativeFfmpegExportRequest exportRequest;
-        exportRequest.holdSeconds = request.holdSeconds;
+        exportRequest.targetDurationSeconds = request.targetDurationSeconds;
         exportRequest.outputFps = request.outputFps;
         exportRequest.crf = request.crf;
         exportRequest.exportIdSuffix = frameSet.frames.back().frameName;

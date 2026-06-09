@@ -22,6 +22,7 @@ assert.strictEqual(settingsModel.DEFAULT_EXPORT_DURATION_SECONDS, contract.expor
 assert.strictEqual(settingsModel.DEFAULT_EXPORT_HOLD_SECONDS, contract.export.defaultHoldSeconds);
 assert.strictEqual(settingsModel.DEFAULT_EXPORT_OUTPUT_FPS, contract.export.defaultOutputFps);
 assert.strictEqual(settingsModel.DEFAULT_EXPORT_MAX_WIDTH, contract.export.defaultMaxWidth);
+assert.strictEqual(settingsModel.MIN_EXPORT_HOLD_SECONDS, 0.000001);
 assert.strictEqual(settingsModel.DEFAULT_CAPTURE_RESOLUTION_PRESET_ID, "1080p");
 assert.strictEqual(settingsModel.DEFAULT_FRAME_QUALITY_PRESET_ID, contract.frame.defaultQualityPreset);
 assert.deepStrictEqual(
@@ -86,7 +87,7 @@ assert.strictEqual(normalized.frameOutputDocumentKey, "e:\\doc\\image.psd");
 assert.strictEqual(normalized.exportSourceDir, "E:\\old");
 assert.strictEqual(normalized.captureOnlyWhenChanged, true);
 assert.strictEqual(normalized.exportDurationSeconds, contract.export.minDurationSeconds);
-assert.strictEqual(normalized.exportHoldSeconds, 1 / contract.export.defaultOutputFps);
+assert.strictEqual(normalized.exportHoldSeconds, settingsModel.MIN_EXPORT_HOLD_SECONDS);
 assert.strictEqual(normalized.exportOutputFps, contract.export.defaultOutputFps);
 assert.strictEqual(normalized.exportMaxWidth, 3840);
 assert.strictEqual(normalized.frameQualityPreset, "lossless");

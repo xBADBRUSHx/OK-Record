@@ -57,7 +57,7 @@ WHY: The product should read as one branded project in user-facing surfaces and 
 
 Status: implemented
 
-Contract: UXP owns Photoshop API calls, panel lifecycle, DOM events, and status display. Critical recording/export failures and export completion keep the bottom selectable detail notice and also show a native blocking alert so users cannot miss the result. Scheduled capture treats Photoshop `executeAsModal` host-modal collisions, such as an active Free Transform operation, as transient host-busy state: recording stays active, no blocking failure alert is shown, and the capture is retried shortly. Pure JS domain modules own recorder state transitions, export profile math, path policy, settings parsing, and painting timer rules. Native addon calls route through a single service bridge before entering UI workflow code.
+Contract: UXP owns Photoshop API calls, panel lifecycle, DOM events, and status display. Critical recording/export failures and export completion keep the bottom selectable detail notice and also show a native blocking alert so users cannot miss the result. Scheduled capture treats Photoshop `executeAsModal` host-modal collisions, such as an active Free Transform operation, as transient host-busy state: recording stays active, no blocking failure alert is shown, and the capture is retried shortly. Pure JS domain modules own recorder state transitions, target-duration export profile math, path policy, settings parsing, and painting timer rules. Native addon calls route through a single service bridge before entering UI workflow code.
 
 Owners: `uxp/main.js`, `uxp/status-messages.js`, `uxp/panel-view.js`, `uxp/panel-dom.js`, `uxp/panel-styles.js`, `uxp/domain/`, `uxp/services/native-bridge.js`.
 
@@ -91,7 +91,7 @@ WHY: The OK-Record project folder is the user-visible continuity boundary, but t
 
 Implemented owner split:
 
-- `uxp/domain/export-profile.js` owns export timing and profile normalization.
+- `uxp/domain/export-profile.js` owns target-duration export timing, source-frame hold previews, representative-frame count previews, and profile normalization.
 - `uxp/domain/path-policy.js` owns native path helpers, saved-PSD project roots, and bilingual recording/step directory names.
 - `uxp/domain/recording-context.js` owns local PSD/PSB document identity, the OK-Record project output directory, document-scoped manual project-directory overrides, recording output context, and active-session/current-document matching. It intentionally ignores `activeDocument.saved` because that flag means "saved since last edit", not "has a local file path". Default recording roots are derived from the current saved PSD/PSB path. A manual project root applies only when the persisted `frameOutputDocumentKey` matches the current document key, so incremental PSD/PSB saves can continue one project only after the user explicitly selects that project folder for the current document; active recording writes still lock to the currently opened document identity to prevent accidental writes after a document switch. Document-close handling validates the locked Photoshop document id before ending a recording, so closing an unrelated document cannot stop the active timeline.
 - `uxp/domain/settings-model.js` owns persisted panel settings defaults and normalization.
@@ -131,7 +131,7 @@ Clean-state decision: v2 does not automatically migrate old panel settings, old 
 
 Status: implemented
 
-Contract: Native export owns frame-set discovery, FFmpeg discovery, structured argv command assembly, logs, progress parsing, aspect-ratio normalization, and output publishing. Timeline export and directory export share one FFmpeg runner while keeping frame discovery separate in `export_frame_set.*`.
+Contract: Native export owns frame-set discovery, representative-frame sampling for short target durations, FFmpeg discovery, structured argv command assembly, logs, progress parsing, aspect-ratio normalization, and output publishing. Timeline export and directory export share one FFmpeg runner while keeping frame discovery separate in `export_frame_set.*`.
 
 Owners: `native/src/module.cpp`, `native/src/export_frame_set.cpp`, `native/src/export_frame_set.h`, `native/src/export_runner.cpp`, `native/src/export_runner.h`, `native/src/export_progress.cpp`, `native/src/export_progress.h`.
 
@@ -152,7 +152,7 @@ Forbidden paths: shell-string FFmpeg commands, duplicated FFmpeg runner logic, e
 
 Predicted wrong defaults: Reintroducing `Record_*` as the recording unit, or merging timeline and directory frame discovery instead of only sharing the FFmpeg runner.
 
-WHY: A drawing document should export as one continuous timelapse across pauses and restarts. Timeline export and arbitrary sequence export have different discovery rules, but they share the same FFmpeg execution, progress, log, and publishing semantics.
+WHY: A drawing document should export as one continuous timelapse across pauses and restarts, while the user-facing target video duration should remain controllable even when the source timeline has many frames. Timeline export and arbitrary sequence export have different discovery rules, but they share the same FFmpeg execution, representative-frame sampling, progress, log, and publishing semantics.
 
 ## Documentation And Build Routing
 

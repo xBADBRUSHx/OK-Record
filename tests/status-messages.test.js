@@ -11,7 +11,11 @@ const exportResult = {
   sourcePath: "E:\\Project\\延时录制_Recordings\\frames",
   sessionId: "",
   frameCount: 120,
-  holdSeconds: 0.5,
+  sourceFrameCount: 120,
+  exportedFrameCount: 60,
+  skippedFrameCount: 60,
+  samplingApplied: true,
+  holdSeconds: 1,
   outputFps: 30,
   outputWidth: 1920,
   outputHeight: 1080,
@@ -47,11 +51,14 @@ assert.strictEqual(successMessages.noticeTitle, "导出完成");
 assert.strictEqual(successMessages.noticeTone, "success");
 assert(successMessages.statusMessage.includes("导出视频：成功"), "export success status must keep a clear success heading");
 assert(successMessages.statusMessage.includes("导出源：E:\\Project\\延时录制_Recordings"), "export status must include source path");
-assert(successMessages.statusMessage.includes("帧数：120"), "export status must include frame count");
+assert(successMessages.statusMessage.includes("源帧数：120"), "export status must include source frame count");
+assert(successMessages.statusMessage.includes("均匀抽帧：120 -> 60，跳过 60 帧"), "export status must include sampling summary");
 assert(successMessages.statusMessage.includes("导出进度：100%"), "export status must include parsed FFmpeg progress");
 assert(successMessages.statusMessage.includes("序列格式：JPEG (.jpg)"), "export status must include sequence storage format");
 assert(successMessages.noticeLines.includes("导出源：序列帧目录"), "export notice must distinguish sequence-directory export");
-assert(successMessages.noticeLines.includes("每秒序列帧：2 张"), "export notice must derive sequence frames per second");
+assert(successMessages.noticeLines.includes("源帧数：120"), "export notice must include source frame count");
+assert(successMessages.noticeLines.includes("实际导出帧：60"), "export notice must include representative frame count");
+assert(successMessages.noticeLines.includes("代表帧密度：1 张/秒"), "export notice must derive representative frames per second");
 assert(successMessages.noticeLines.includes("输出帧率：30 fps"), "export notice must include output fps");
 assert(successMessages.noticeLines.includes("质量：默认"), "export notice must include quality preset label");
 assert(successMessages.noticeLines.includes("分辨率：1080p"), "export notice must include resolution label");

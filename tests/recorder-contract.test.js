@@ -555,12 +555,15 @@ assert.strictEqual(
 );
 assert(uxpMain.includes("readExportProfileFromPanel"), "UXP must read export profile settings from the panel");
 assert(uxpMain.includes("exportProfileModel.createExportProfile"), "UXP must normalize export settings through the export-profile domain");
-assert(uxpMain.includes("calculateHoldSeconds"), "UXP must calculate native hold seconds from target video duration and frame count");
+assert(uxpMain.includes("targetDurationSeconds: exportProfile.durationSeconds"), "UXP must pass target video duration to native export");
 assert(uxpMain.includes("calculateExportTiming"), "UXP must derive export timing preview values from frame count, target duration, and fixed output fps");
-assert(uxpMain.includes("张序列帧"), "UXP status must preview sequence frames displayed per second");
+assert(uxpMain.includes("均匀抽帧"), "UXP status must preview representative-frame sampling when target duration is short");
 assert(uxpMain.includes("handleHoldSecondsChange"), "UXP must let per-frame hold duration drive target duration");
-assert(uxpMain.includes("holdSeconds: exportProfile.holdSeconds"), "UXP must pass the calculated hold seconds to native export");
 assert(statusMessagesModule.includes("buildExportSuccessMessages"), "UXP status message module must expose export-success mapping");
+assert(statusMessagesModule.includes("samplingApplied"), "UXP export success messaging must expose native sampling details");
+assert(nativeModule.includes("targetDurationSeconds must be > 0 and <= 3600"), "native export protocol must validate target duration");
+assert(nativeExportRunnerModule.includes("SelectRepresentativeFrames"), "native export must own representative-frame sampling");
+assert(nativeExportRunnerModule.includes("samplingApplied"), "native export result must report whether sampling occurred");
 assert(nativeExportRunnerModule.includes(`"${contract.productNaming.exportFilePrefix}"`), "native exports must use the branded OK-Record file prefix");
 assert(!nativeExportRunnerModule.includes(`stage_${"timelapse"}`), "native exports must not keep the retired Stage-era file prefix");
 assert(uxpMain.includes("lastExportProgress"), "UXP recorder state must retain the last export progress summary");
@@ -600,7 +603,7 @@ assert(localDocumentation.includes("截图待放"), "local documentation must ke
 assert(localDocumentation.includes("images/02-install-ccx.jpg"), "local documentation must expose the Creative Cloud install screenshot");
 assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local documentation must expose the Creative Cloud installed-state screenshot");
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
-assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.2"'), "local documentation must link to the GitHub Release download page");
+assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3"'), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
 assert.strictEqual(manifest.host.minVersion, "24.4.0", "manifest minimum Photoshop version must match the stable Imaging API requirement");
 assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.4.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");
@@ -681,8 +684,8 @@ assert(localDocumentation.includes("OK-Record save folder location."), "local do
 assert(localDocumentation.includes("Choose the image sequence folder to export."), "local documentation must translate the export-folder screenshot caption");
 assert(!localDocumentation.includes("每帧停留决定每张序列帧在视频里停留多久；视频时长可以反推每帧停留时间。"), "local documentation must not keep the dense export settings paragraph");
 for (const exportOptionCopy of [
-  "每帧停留</span>：决定每张序列帧在视频里停留多久。数值越大，画面停留越久，视频节奏越慢。",
-  "视频时长</span>：根据序列帧数量反推每帧停留时间，适合想直接控制最终视频长度时使用。",
+  "每帧停留</span>：根据当前源帧数量反推视频时长。大量源帧导出为短视频时，OK-Record 会自动均匀抽取代表帧。",
+  "视频时长</span>：优先控制最终视频长度。源帧太多时会保留首尾帧并均匀抽取中间帧，不会强制导出超长视频。",
   "质量预设</span>：控制视频压缩质量。质量越高，画面越清晰，文件也会更大。",
   "分辨率</span>：控制导出视频的最大尺寸。分辨率越高，细节越完整，导出文件也会更大。",
 ]) {

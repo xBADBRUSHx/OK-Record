@@ -20,8 +20,9 @@ function roundMilliseconds(value) {
   return Math.max(0, Math.round(value * 100) / 100);
 }
 
-function formatNumberValue(value) {
-  const rounded = Math.round(Number(value) * 1000) / 1000;
+function formatNumberValue(value, precision = 3) {
+  const scale = 10 ** precision;
+  const rounded = Math.round(Number(value) * scale) / scale;
   if (!Number.isFinite(rounded)) {
     return "0";
   }
@@ -29,7 +30,8 @@ function formatNumberValue(value) {
 }
 
 function formatSecondsValue(seconds) {
-  return formatNumberValue(seconds);
+  const numericSeconds = Math.abs(Number(seconds));
+  return formatNumberValue(seconds, numericSeconds > 0 && numericSeconds < 0.01 ? 6 : 3);
 }
 
 function formatIntervalSeconds(totalSeconds) {
@@ -190,18 +192,29 @@ function formatError(error) {
 function buildExportSuccessMessages(options) {
   const result = options.result || {};
   const exportProfile = options.exportProfile || {};
-  const sequenceFramesPerSecond = result.holdSeconds > 0 ? 1 / result.holdSeconds : 0;
+  const sourceFrameCount = Math.max(0, Math.floor(toFiniteNumber(result.sourceFrameCount, result.frameCount || 0)));
+  const exportedFrameCount = Math.max(0, Math.floor(toFiniteNumber(result.exportedFrameCount, sourceFrameCount)));
+  const skippedFrameCount = Math.max(0, Math.floor(toFiniteNumber(result.skippedFrameCount, sourceFrameCount - exportedFrameCount)));
+  const samplingApplied = Boolean(result.samplingApplied) && exportedFrameCount > 0 && skippedFrameCount > 0;
+  const targetDurationSeconds = toFiniteNumber(result.targetDurationSeconds, exportProfile.durationSeconds || 0);
+  const exportedFramesPerSecond = exportedFrameCount > 0 && targetDurationSeconds > 0 ?
+    exportedFrameCount / targetDurationSeconds :
+    0;
   const progressText = formatExportProgress(result);
   const frameStorageLine = result.inputFrameStorageFormat ?
     `序列格式：${formatFrameStorageFormat(result.inputFrameStorageFormat, result.inputFrameExtension)}` :
+    "";
+  const samplingLine = samplingApplied ?
+    `均匀抽帧：${sourceFrameCount} -> ${exportedFrameCount}，跳过 ${skippedFrameCount} 帧` :
     "";
 
   const statusMessage = [
     "导出视频：成功",
     result.sourceType === "directory" ? `导出源：${result.sourcePath}` : `导出源：录制时间线`,
-    `帧数：${result.frameCount}`,
+    `源帧数：${sourceFrameCount}`,
+    samplingLine,
     `目标时长：${formatIntervalSeconds(exportProfile.durationSeconds)}`,
-    `每帧停留：${formatSecondsValue(result.holdSeconds)} 秒`,
+    `代表帧停留：${formatSecondsValue(result.holdSeconds)} 秒`,
     `输出帧率：${result.outputFps}`,
     frameStorageLine,
     `尺寸：${result.outputWidth} x ${result.outputHeight}`,
@@ -214,10 +227,12 @@ function buildExportSuccessMessages(options) {
   const noticeLines = [
     result.sourceType === "directory" ? "导出源：序列帧目录" : "导出源：录制时间线",
     result.sourceType === "directory" ? `源路径：${result.sourcePath}` : `源路径：${result.sourcePath}`,
-    `帧数：${result.frameCount}`,
-    `视频时长：${formatIntervalSeconds(result.targetDurationSeconds || exportProfile.durationSeconds)}`,
-    `每帧停留：${formatSecondsValue(result.holdSeconds)} 秒`,
-    sequenceFramesPerSecond > 0 ? `每秒序列帧：${formatNumberValue(sequenceFramesPerSecond)} 张` : "",
+    `源帧数：${sourceFrameCount}`,
+    samplingLine,
+    `实际导出帧：${exportedFrameCount}`,
+    `视频时长：${formatIntervalSeconds(targetDurationSeconds || exportProfile.durationSeconds)}`,
+    `代表帧停留：${formatSecondsValue(result.holdSeconds)} 秒`,
+    exportedFramesPerSecond > 0 ? `代表帧密度：${formatNumberValue(exportedFramesPerSecond)} 张/秒` : "",
     `输出帧率：${result.outputFps || exportProfile.outputFps} fps`,
     `质量：${options.frameQualityLabel}`,
     `分辨率：${options.captureResolutionLabel}`,
