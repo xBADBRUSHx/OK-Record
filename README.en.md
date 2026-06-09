@@ -14,7 +14,7 @@ Download the `.ccx` installer from GitHub Releases:
 
 User guide with screenshots: [OK-Record User Guide](https://xbadbrushx.github.io/OK-Record/)
 
-When the panel opens, the plugin checks the public version. If a newer version is available, a blue update button appears at the top right of the panel; users can click it and choose GitHub or the netdisk link to manually download the new `.ccx` installer.
+When the panel opens, the plugin checks the public version. If a newer version is available, a blue update button appears at the right side of the painting-timer row; users can click it and choose GitHub or the netdisk link to manually download the new `.ccx` installer.
 
 The current public package is a Windows test build. The release page provides two `.ccx` installers:
 

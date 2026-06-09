@@ -208,15 +208,15 @@ function setTimerStatusButtonMetrics(button) {
 }
 
 function renderUpdateBadge(refs, state = {}) {
-  if (!refs.updateBadgeRowNode || !refs.updateBadgeButtonNode) {
+  if (!refs.updateBadgeSlotNode || !refs.updateBadgeButtonNode) {
     return;
   }
 
   const updateAvailable = Boolean(state.updateAvailable);
   const versionText = String(state.updateVersion || "").trim();
-  refs.updateBadgeRowNode.className = [
-    "ok-record-update-badge-row",
-    updateAvailable ? "ok-record-update-badge-row-visible" : "",
+  refs.updateBadgeSlotNode.className = [
+    "ok-record-update-badge-slot",
+    updateAvailable ? "ok-record-update-badge-slot-visible" : "",
   ].filter(Boolean).join(" ");
   refs.updateBadgeButtonNode.disabled = !updateAvailable;
   refs.updateBadgeButtonNode.setAttribute("aria-disabled", String(!updateAvailable));
@@ -226,13 +226,20 @@ function renderUpdateBadge(refs, state = {}) {
   refs.updateBadgeButtonNode.setAttribute("aria-label", refs.updateBadgeButtonNode.title);
 }
 
-function createUpdateBadge({ refs, state, handlers }) {
-  refs.updateBadgeRowNode = document.createElement("div");
-  refs.updateBadgeRowNode.className = "ok-record-update-badge-row";
+function createUpdateBadgeSlot({ refs, state, handlers }) {
+  refs.updateBadgeSlotNode = document.createElement("div");
+  refs.updateBadgeSlotNode.className = "ok-record-update-badge-slot";
   refs.updateBadgeButtonNode = createButton("可更新", handlers.onShowUpdateDialog, "ok-record-update-badge");
-  refs.updateBadgeRowNode.appendChild(refs.updateBadgeButtonNode);
+  refs.updateBadgeSlotNode.appendChild(refs.updateBadgeButtonNode);
   renderUpdateBadge(refs, state);
-  return refs.updateBadgeRowNode;
+  return refs.updateBadgeSlotNode;
+}
+
+function createUpdateBadgeBalanceSlot() {
+  const slot = document.createElement("div");
+  slot.className = "ok-record-update-badge-balance-slot";
+  slot.setAttribute("aria-hidden", "true");
+  return slot;
 }
 
 function createUpdateDialog({ refs, handlers }) {
@@ -284,7 +291,7 @@ function createUpdateDialog({ refs, handlers }) {
   return refs.updateDialogNode;
 }
 
-function createPrimaryActionsGroup({ refs, buttonStates, handlers }) {
+function createPrimaryActionsGroup({ refs, state, buttonStates, handlers }) {
   refs.paintingTimerDisplayButtonNode = createControlButton(
     buttonStates.paintingTimer.labelText,
     handlers.onPaintingTimerControl,
@@ -312,7 +319,13 @@ function createPrimaryActionsGroup({ refs, buttonStates, handlers }) {
   );
   renderStepCaptureButtonLabel(refs.captureNowButtonNode, buttonStates.stepCapture);
 
-  const timerActionRow = createButtonRow([refs.paintingTimerDisplayButtonNode], "ok-record-primary-action-row ok-record-timer-control-row");
+  const timerActionRow = document.createElement("div");
+  timerActionRow.className = "ok-record-primary-action-row ok-record-timer-control-row";
+  appendChildren(timerActionRow, [
+    createUpdateBadgeBalanceSlot(),
+    refs.paintingTimerDisplayButtonNode,
+    createUpdateBadgeSlot({ refs, state, handlers }),
+  ]);
   const recordingActionRow = createButtonRow([refs.startRecordingButtonNode], "ok-record-primary-action-row ok-record-recording-row");
   const stepActionRow = createButtonRow([refs.captureNowButtonNode], "ok-record-primary-action-row ok-record-step-row");
 
@@ -505,7 +518,6 @@ function renderPanel(options) {
     }
     spacedPanelSections.push(section);
   });
-  spacedPanelSections.unshift(createUpdateBadge({ ...options, refs }));
   spacedPanelSections.push(createExportNoticePanel({ ...options, refs }));
   spacedPanelSections.push(createUpdateDialog({ ...options, refs }));
   appendChildren(panel, spacedPanelSections);

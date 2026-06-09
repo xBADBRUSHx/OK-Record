@@ -79,16 +79,15 @@ function assertPanelShell(panel) {
   assert(panel, "renderPanel must create the panel root");
   assert.strictEqual(global.document.body.children[0].tagName, "STYLE", "renderPanel must install the style node first");
   assert.strictEqual(global.document.body.children[1], panel, "renderPanel must append the panel after styles");
-  assert.strictEqual(panel.children.length, 8, "panel must render the update badge row, three groups, two section gaps, the export notice, and the update dialog");
+  assert.strictEqual(panel.children.length, 7, "panel must render three groups, two section gaps, the export notice, and the update dialog");
 
-  assert(hasClass(panel.children[0], "ok-record-update-badge-row"), "update badge row must own the panel top-right update entry");
-  assert(hasClass(panel.children[1], "ok-record-primary-actions-group"), "primary recording actions must render before settings");
-  assert(hasClass(panel.children[2], "ok-record-panel-section-gap"), "first section gap must be a real spacer node");
-  assert(hasClass(panel.children[3], "ok-record-recording-group"), "OK-Record settings group must render after primary actions");
-  assert(hasClass(panel.children[4], "ok-record-panel-section-gap"), "second section gap must be a real spacer node");
-  assert(hasClass(panel.children[5], "ok-record-export-group"), "export group must render after OK-Record settings");
-  assert(hasClass(panel.children[6], "ok-record-export-notice"), "export notice must render after the visible groups");
-  assert(hasClass(panel.children[7], "ok-record-update-dialog"), "update download dialog must render as the final overlay surface");
+  assert(hasClass(panel.children[0], "ok-record-primary-actions-group"), "primary recording actions must render before settings");
+  assert(hasClass(panel.children[1], "ok-record-panel-section-gap"), "first section gap must be a real spacer node");
+  assert(hasClass(panel.children[2], "ok-record-recording-group"), "OK-Record settings group must render after primary actions");
+  assert(hasClass(panel.children[3], "ok-record-panel-section-gap"), "second section gap must be a real spacer node");
+  assert(hasClass(panel.children[4], "ok-record-export-group"), "export group must render after OK-Record settings");
+  assert(hasClass(panel.children[5], "ok-record-export-notice"), "export notice must render after the visible groups");
+  assert(hasClass(panel.children[6], "ok-record-update-dialog"), "update download dialog must render as the final overlay surface");
 
   const groupTitles = global.document.querySelectorAll(".ok-record-group-title-text").map(textOf);
   assert.deepStrictEqual(groupTitles, ["OK-Record 设置", "导出设置"], "only settings and export groups should have visible titles");
@@ -121,6 +120,9 @@ function assertPrimaryActionsGroup(group, refs) {
   const body = group.querySelector(".ok-record-group-body");
   assert(body, "primary actions group must have a body");
   assert(hasClass(body.children[0], "ok-record-timer-control-row"), "painting timer button must be the first visible action");
+  assert(hasClass(body.children[0].children[0], "ok-record-update-badge-balance-slot"), "timer row must keep a left balance slot");
+  assert.strictEqual(body.children[0].children[1], refs.paintingTimerDisplayButtonNode, "painting timer button must stay the centered top-row control");
+  assert.strictEqual(body.children[0].children[2], refs.updateBadgeSlotNode, "available-update badge must sit inside the timer row right slot");
   assert(hasClass(body.children[1], "ok-record-recording-button-row-gap"), "painting timer and recording actions must use a 12px spacer node");
   assert(hasClass(body.children[2], "ok-record-recording-row"), "recording button must sit directly under painting timer");
   assert(hasClass(body.children[3], "ok-record-recording-button-row-gap"), "recording and manual sampling actions must use a 12px spacer node");
@@ -232,14 +234,14 @@ function assertNoticeOnly(refs) {
 
 function assertUpdateSurfaces(refs) {
   assert.strictEqual(textOf(refs.updateBadgeButtonNode), "可更新", "update badge must use the requested visible label");
-  assert(!hasClass(refs.updateBadgeRowNode, "ok-record-update-badge-row-visible"), "update badge row must stay hidden before a newer manifest is found");
+  assert(!hasClass(refs.updateBadgeSlotNode, "ok-record-update-badge-slot-visible"), "update badge slot must stay hidden before a newer manifest is found");
   assert.strictEqual(refs.updateBadgeButtonNode.disabled, true, "hidden update badge must also be disabled");
 
   panelView.renderUpdateBadge(refs, {
     updateAvailable: true,
     updateVersion: "1.0.3",
   });
-  assert(hasClass(refs.updateBadgeRowNode, "ok-record-update-badge-row-visible"), "newer manifest must reveal the top-right update badge");
+  assert(hasClass(refs.updateBadgeSlotNode, "ok-record-update-badge-slot-visible"), "newer manifest must reveal the painting-timer-row update badge");
   assert.strictEqual(refs.updateBadgeButtonNode.disabled, false, "visible update badge must be clickable");
   assert.strictEqual(refs.updateBadgeButtonNode.getAttribute("aria-label"), "发现新版本 1.0.3，点击查看下载链接");
 
@@ -282,9 +284,9 @@ function testRenderPanel() {
 
   assertPanelShell(panel);
   assertUpdateSurfaces(refs);
-  assertPrimaryActionsGroup(panel.children[1], refs);
-  assertRecordingGroup(panel.children[3], refs);
-  assertExportGroup(panel.children[5], refs);
+  assertPrimaryActionsGroup(panel.children[0], refs);
+  assertRecordingGroup(panel.children[2], refs);
+  assertExportGroup(panel.children[4], refs);
   assertNoticeOnly(refs);
 }
 

@@ -721,9 +721,10 @@ async function run() {
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：1.0.0"), "update notice must show the installed plugin version");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("网盘：https://pan.example.com/ok-record"), "update notice must include the configured netdisk URL");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("面板菜单：下载页_Download Page"), "update notice must point users to the download-page menu action");
-  const updateBadgeRow = document.querySelector(".ok-record-update-badge-row");
+  const updateBadgeSlot = document.querySelector(".ok-record-update-badge-slot");
   const updateBadgeButton = document.querySelector(".ok-record-update-badge");
-  assert(updateBadgeRow.classList.contains("ok-record-update-badge-row-visible"), "newer update manifest must show the top-right update badge");
+  assert(updateBadgeSlot.classList.contains("ok-record-update-badge-slot-visible"), "newer update manifest must show the painting-timer-row update badge");
+  assert.strictEqual(document.querySelector(".ok-record-timer-control-row").children[2], updateBadgeSlot, "available-update badge must stay in the timer row right slot");
   assert.strictEqual(updateBadgeButton.querySelector(".ok-record-button-label").textContent, "可更新", "update badge must use the requested visible label");
   assert.strictEqual(updateBadgeButton.disabled, false, "visible update badge must be clickable");
 

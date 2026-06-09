@@ -37,18 +37,20 @@ module.exports = `
     cursor: default;
   }
 
-  .ok-record-update-badge-row {
+  .ok-record-update-badge-slot {
     box-sizing: border-box;
-    display: none;
-    flex: 0 0 auto;
-    justify-content: flex-end;
-    width: 100%;
+    display: flex;
+    flex: 1 1 0;
     min-width: 0;
-    margin: 0 0 8px;
+    height: 48px;
+    margin: 0;
+    overflow: hidden;
+    justify-content: flex-end;
+    align-items: flex-start;
   }
 
-  .ok-record-update-badge-row-visible {
-    display: flex;
+  .ok-record-update-badge-slot:not(.ok-record-update-badge-slot-visible) .ok-record-update-badge {
+    display: none;
   }
 
   .ok-record-update-badge {
@@ -592,10 +594,22 @@ module.exports = `
     flex: 0 0 auto;
     flex-wrap: nowrap;
     gap: 0;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     width: 100%;
+    height: 48px;
+    min-height: 48px;
     margin-top: 0;
+    overflow: hidden;
+  }
+
+  .ok-record-update-badge-balance-slot {
+    box-sizing: border-box;
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 48px;
+    margin: 0;
   }
 
   .ok-record-timer-status-button {

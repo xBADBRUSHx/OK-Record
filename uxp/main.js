@@ -115,7 +115,7 @@ let exportNoticeNode = null;
 let exportNoticeTitleNode = null;
 let exportNoticeBodyNode = null;
 let exportNoticeCloseButtonNode = null;
-let updateBadgeRowNode = null;
+let updateBadgeSlotNode = null;
 let updateBadgeButtonNode = null;
 let updateDialogNode = null;
 let updateDialogTitleNode = null;
@@ -1087,7 +1087,7 @@ function getUpdateBadgeViewState() {
 
 function syncUpdateBadge() {
   panelView.renderUpdateBadge({
-    updateBadgeRowNode,
+    updateBadgeSlotNode,
     updateBadgeButtonNode,
   }, getUpdateBadgeViewState());
 }
@@ -3435,7 +3435,7 @@ function resetPanelNodeReferences() {
   exportNoticeTitleNode = null;
   exportNoticeBodyNode = null;
   exportNoticeCloseButtonNode = null;
-  updateBadgeRowNode = null;
+  updateBadgeSlotNode = null;
   updateBadgeButtonNode = null;
   updateDialogNode = null;
   updateDialogTitleNode = null;
@@ -3471,7 +3471,7 @@ function assignPanelNodeReferences(refs) {
   exportNoticeTitleNode = refs.exportNoticeTitleNode || null;
   exportNoticeBodyNode = refs.exportNoticeBodyNode || null;
   exportNoticeCloseButtonNode = refs.exportNoticeCloseButtonNode || null;
-  updateBadgeRowNode = refs.updateBadgeRowNode || null;
+  updateBadgeSlotNode = refs.updateBadgeSlotNode || null;
   updateBadgeButtonNode = refs.updateBadgeButtonNode || null;
   updateDialogNode = refs.updateDialogNode || null;
   updateDialogTitleNode = refs.updateDialogTitleNode || null;

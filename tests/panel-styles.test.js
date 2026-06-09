@@ -54,6 +54,7 @@ const groupTitleTextCss = sliceBetween(".ok-record-group-title-text {", ".ok-rec
 const exportGroupTitleCss = sliceBetween(".ok-record-export-group .ok-record-group-title {", ".ok-record-group-body {");
 const panelCss = sliceBetween(".ok-record-panel {", ".ok-record-group {");
 const panelScrollbarCss = sliceBetween(".ok-record-panel::-webkit-scrollbar {", ".ok-record-group {");
+const updateBadgeSlotCss = sliceBetween(".ok-record-update-badge-slot {", ".ok-record-update-badge {");
 const updateBadgeCss = sliceBetween(".ok-record-update-badge {", ".ok-record-update-badge:hover");
 const updateDialogCss = sliceBetween(".ok-record-update-dialog {", ".ok-record-update-dialog-visible {");
 const updateDialogActionsCss = sliceBetween(".ok-record-update-dialog-actions {", ".ok-record-update-link-button {");
@@ -113,8 +114,11 @@ assert(panelCss.includes("scrollbar-width: none"), "panel must hide the visible 
 assert(panelScrollbarCss.includes("display: none"), "panel must hide Chromium/WebKit scrollbars in Photoshop UXP");
 assert(updateBadgeCss.includes("background: #1f7aff"), "available-update badge must use a clear blue background");
 assert(updateBadgeCss.includes("color: #ffffff"), "available-update badge must use white text");
-assert(updateBadgeCss.includes("font-size: 13px"), "available-update badge must stay small enough for the panel top-right");
-assert(styles.includes(".ok-record-update-badge-row-visible {\n    display: flex;"), "available-update badge row must be hidden until an update is detected");
+assert(updateBadgeCss.includes("font-size: 13px"), "available-update badge must stay small enough in the painting timer row");
+assert(updateBadgeSlotCss.includes("flex: 1 1 0"), "available-update badge slot must share the right side of the timer flex row");
+assert(updateBadgeSlotCss.includes("overflow: hidden"), "available-update badge slot must clip the update button when the panel narrows");
+assert(updateBadgeSlotCss.includes("justify-content: flex-end"), "available-update badge must right-align inside the clipped row slot");
+assert(styles.includes(".ok-record-update-badge-slot:not(.ok-record-update-badge-slot-visible) .ok-record-update-badge {\n    display: none;"), "available-update button must be hidden until an update is detected while its right slot still balances the timer row");
 assert(updateDialogCss.includes("display: none"), "update download dialog must stay hidden until the badge is clicked");
 assert(updateDialogCss.includes("position: absolute"), "update download dialog must overlay the panel without creating a new Photoshop window");
 assert(updateDialogCss.includes("background: rgba(0, 0, 0, 0.54)"), "update download dialog must dim the panel behind the download choices");
@@ -160,6 +164,12 @@ assert(fieldControlsCss.includes("ok-record-field-control-gap"), "field controls
 assert(fieldControlsCss.includes("flex: 0 0 auto"), "field control clusters must keep stable height under short panel heights");
 assert(qualityControlsCss.includes("flex: 0 0 auto"), "quality preset controls must not shrink vertically under short panel heights");
 assert(qualityControlsCss.includes("gap: 0"), "quality controls must not rely on flex gap in Photoshop UXP");
+assert(timerControlCss.includes("display: flex"), "timer row must use UXP-stable flex layout");
+assert(timerControlCss.includes("align-items: flex-start"), "timer row must align the update badge to the top of the row");
+assert(timerControlCss.includes("justify-content: center"), "timer row must keep the painting timer centered");
+assert(timerControlCss.includes(".ok-record-update-badge-balance-slot"), "timer row must include a left balance slot matching the right update slot");
+assert(timerControlCss.includes("overflow: hidden"), "timer row must clip the available-update badge when the panel is minimized");
+assert(timerControlCss.includes("height: 48px"), "timer row must keep the original single-button height");
 
 assert(inputCss.includes("-webkit-appearance: none"), "numeric fields must suppress native field chrome");
 assert(inputCss.includes("appearance: none"), "numeric fields must suppress native field chrome");
@@ -187,11 +197,10 @@ assert(inputStateCss.includes("border-color: #9db7ff"), "input focus state must 
 assert(inputStateCss.includes("box-shadow: none"), "input focus must explicitly suppress native/glowing shadows");
 assert(!inputStateCss.includes("0 0 0 2px"), "input focus must not use the retired glowing field treatment");
 
-assert(timerControlCss.includes("justify-content: center"), "painting timer row must center the timer status button");
 assert(timerControlCss.includes("gap: 0"), "painting timer controls must not depend on flex gap for spacing");
 assert(timerControlCss.includes("margin-top: 0"), "painting timer button row must sit directly under the OK-Record settings title");
 assert(!timerControlCss.includes("ok-record-painting-timeout-field"), "painting timer idle threshold must use the shared settings field layout");
-assert(!timerControlCss.includes("margin-left"), "painting timer row must not keep retired spacing for a removed reset icon");
+assert(!timerControlCss.includes("margin-left: 8px"), "painting timer row must not keep retired spacing for a removed reset icon");
 assert(timerControlCss.includes("flex: 0 0 auto"), "timer control row must not shrink vertically under short panel heights");
 assert(timerStatusButtonCss.includes("min-width: 150px"), "painting timer status button must keep a stable centered width");
 assert(timerStatusButtonCss.includes("height: 48px"), "painting timer status button must use the requested 48px height");
