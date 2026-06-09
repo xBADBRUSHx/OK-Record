@@ -26,6 +26,8 @@ function makeRenderOptions(document) {
       exportDurationParts: { minutes: 0, seconds: 10 },
       frameQualityPresetId: "default",
       captureResolutionPresetId: "1080p",
+      updateAvailable: false,
+      updateVersion: "",
     },
     ranges: {
       minIntervalSeconds: 1,
@@ -77,14 +79,16 @@ function assertPanelShell(panel) {
   assert(panel, "renderPanel must create the panel root");
   assert.strictEqual(global.document.body.children[0].tagName, "STYLE", "renderPanel must install the style node first");
   assert.strictEqual(global.document.body.children[1], panel, "renderPanel must append the panel after styles");
-  assert.strictEqual(panel.children.length, 6, "panel must render three groups, two section gaps, and the export notice");
+  assert.strictEqual(panel.children.length, 8, "panel must render the update badge row, three groups, two section gaps, the export notice, and the update dialog");
 
-  assert(hasClass(panel.children[0], "ok-record-primary-actions-group"), "primary recording actions must render before settings");
-  assert(hasClass(panel.children[1], "ok-record-panel-section-gap"), "first section gap must be a real spacer node");
-  assert(hasClass(panel.children[2], "ok-record-recording-group"), "OK-Record settings group must render after primary actions");
-  assert(hasClass(panel.children[3], "ok-record-panel-section-gap"), "second section gap must be a real spacer node");
-  assert(hasClass(panel.children[4], "ok-record-export-group"), "export group must render after OK-Record settings");
-  assert(hasClass(panel.children[5], "ok-record-export-notice"), "export notice must render after the visible groups");
+  assert(hasClass(panel.children[0], "ok-record-update-badge-row"), "update badge row must own the panel top-right update entry");
+  assert(hasClass(panel.children[1], "ok-record-primary-actions-group"), "primary recording actions must render before settings");
+  assert(hasClass(panel.children[2], "ok-record-panel-section-gap"), "first section gap must be a real spacer node");
+  assert(hasClass(panel.children[3], "ok-record-recording-group"), "OK-Record settings group must render after primary actions");
+  assert(hasClass(panel.children[4], "ok-record-panel-section-gap"), "second section gap must be a real spacer node");
+  assert(hasClass(panel.children[5], "ok-record-export-group"), "export group must render after OK-Record settings");
+  assert(hasClass(panel.children[6], "ok-record-export-notice"), "export notice must render after the visible groups");
+  assert(hasClass(panel.children[7], "ok-record-update-dialog"), "update download dialog must render as the final overlay surface");
 
   const groupTitles = global.document.querySelectorAll(".ok-record-group-title-text").map(textOf);
   assert.deepStrictEqual(groupTitles, ["OK-Record 设置", "导出设置"], "only settings and export groups should have visible titles");
@@ -226,6 +230,50 @@ function assertNoticeOnly(refs) {
   assert.strictEqual(textOf(refs.exportNoticeBodyNode), "");
 }
 
+function assertUpdateSurfaces(refs) {
+  assert.strictEqual(textOf(refs.updateBadgeButtonNode), "可更新", "update badge must use the requested visible label");
+  assert(!hasClass(refs.updateBadgeRowNode, "ok-record-update-badge-row-visible"), "update badge row must stay hidden before a newer manifest is found");
+  assert.strictEqual(refs.updateBadgeButtonNode.disabled, true, "hidden update badge must also be disabled");
+
+  panelView.renderUpdateBadge(refs, {
+    updateAvailable: true,
+    updateVersion: "1.0.3",
+  });
+  assert(hasClass(refs.updateBadgeRowNode, "ok-record-update-badge-row-visible"), "newer manifest must reveal the top-right update badge");
+  assert.strictEqual(refs.updateBadgeButtonNode.disabled, false, "visible update badge must be clickable");
+  assert.strictEqual(refs.updateBadgeButtonNode.getAttribute("aria-label"), "发现新版本 1.0.3，点击查看下载链接");
+
+  panelView.showUpdateDialog(refs, {
+    currentVersion: "1.0.2",
+    version: "1.0.3",
+    summary: "测试更新摘要",
+    githubUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+    netdiskUrl: "",
+  });
+  assert(hasClass(refs.updateDialogNode, "ok-record-update-dialog-visible"), "clicking the update badge must show the download dialog");
+  assert.strictEqual(textOf(refs.updateDialogTitleNode), "发现新版本 1.0.3");
+  assert(textOf(refs.updateDialogVersionNode).includes("当前版本：1.0.2"), "update dialog must show the installed version");
+  assert.strictEqual(textOf(refs.updateDialogSummaryNode), "测试更新摘要");
+  assert.strictEqual(textOf(refs.updateDialogGithubButtonNode), "GitHub");
+  assert.strictEqual(textOf(refs.updateDialogNetdiskButtonNode), "网盘");
+  assert.strictEqual(refs.updateDialogGithubButtonNode.disabled, false, "GitHub download button must be enabled when the release URL is present");
+  assert.strictEqual(refs.updateDialogNetdiskButtonNode.disabled, true, "netdisk button must be disabled when update.json has no netdisk URL");
+  assert.strictEqual(textOf(refs.updateDialogHintNode), "网盘链接未配置，可以先使用 GitHub 下载。");
+
+  panelView.showUpdateDialog(refs, {
+    currentVersion: "1.0.2",
+    version: "1.0.3",
+    summary: "测试更新摘要",
+    githubUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+    netdiskUrl: "https://pan.example.com/ok-record",
+  });
+  assert.strictEqual(refs.updateDialogNetdiskButtonNode.disabled, false, "netdisk button must become enabled when update.json supplies a URL");
+  assert.strictEqual(textOf(refs.updateDialogHintNode), "请选择 GitHub 或网盘下载新版 .ccx 安装文件。");
+
+  panelView.hideUpdateDialog(refs);
+  assert.strictEqual(refs.updateDialogNode.className, "ok-record-update-dialog", "hidden update dialog must reset to its base class");
+}
+
 function testRenderPanel() {
   const document = new MockDocument();
   global.document = document;
@@ -233,9 +281,10 @@ function testRenderPanel() {
   const panel = document.querySelector(".ok-record-panel");
 
   assertPanelShell(panel);
-  assertPrimaryActionsGroup(panel.children[0], refs);
-  assertRecordingGroup(panel.children[2], refs);
-  assertExportGroup(panel.children[4], refs);
+  assertUpdateSurfaces(refs);
+  assertPrimaryActionsGroup(panel.children[1], refs);
+  assertRecordingGroup(panel.children[3], refs);
+  assertExportGroup(panel.children[5], refs);
   assertNoticeOnly(refs);
 }
 

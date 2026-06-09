@@ -18,6 +18,7 @@ module.exports = `
 
   .ok-record-panel {
     box-sizing: border-box;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -34,6 +35,153 @@ module.exports = `
     border-radius: 0;
     background: #1e1e1e;
     cursor: default;
+  }
+
+  .ok-record-update-badge-row {
+    box-sizing: border-box;
+    display: none;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 8px;
+  }
+
+  .ok-record-update-badge-row-visible {
+    display: flex;
+  }
+
+  .ok-record-update-badge {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-width: 58px;
+    min-height: 24px;
+    padding: 2px 10px;
+    border: 1px solid rgba(126, 179, 255, 0.74);
+    border-radius: 6px;
+    background: #1f7aff;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .ok-record-update-badge:hover,
+  .ok-record-update-badge:focus {
+    border-color: rgba(178, 211, 255, 0.92);
+    background: #2b86ff;
+  }
+
+  .ok-record-update-badge:active {
+    background: #176de6;
+  }
+
+  .ok-record-update-dialog {
+    box-sizing: border-box;
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    min-height: 100%;
+    padding: 48px 16px 16px;
+    background: rgba(0, 0, 0, 0.54);
+  }
+
+  .ok-record-update-dialog-visible {
+    display: flex;
+  }
+
+  .ok-record-update-dialog-panel {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: 360px;
+    padding: 14px;
+    border: 1px solid rgba(126, 179, 255, 0.68);
+    border-radius: 8px;
+    background: #242424;
+    color: rgba(235, 240, 248, 0.92);
+  }
+
+  .ok-record-update-dialog-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    margin-bottom: 10px;
+  }
+
+  .ok-record-update-dialog-title {
+    min-width: 0;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ok-record-update-dialog-version,
+  .ok-record-update-dialog-summary,
+  .ok-record-update-dialog-hint {
+    min-width: 0;
+    color: rgba(235, 240, 248, 0.76);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  .ok-record-update-dialog-version,
+  .ok-record-update-dialog-summary,
+  .ok-record-update-dialog-actions {
+    margin-bottom: 10px;
+  }
+
+  .ok-record-update-dialog-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ok-record-update-dialog-actions > * + * {
+    margin-left: 8px;
+  }
+
+  .ok-record-update-link-button {
+    box-sizing: border-box;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid rgba(157, 183, 255, 0.48);
+    border-radius: 6px;
+    background: #2b2b2b;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .ok-record-update-link-primary {
+    border-color: rgba(126, 179, 255, 0.74);
+    background: #1f7aff;
   }
 
   .ok-record-panel-section-gap {

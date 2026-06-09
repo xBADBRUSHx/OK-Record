@@ -330,6 +330,7 @@ async function run() {
           version: "1.0.3",
           releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
           downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.3/OK-Record_with-ffmpeg.ccx",
+          netdiskUrl: "https://pan.example.com/ok-record",
           summary: "测试更新提醒",
         };
       },
@@ -718,7 +719,39 @@ async function run() {
   assert.strictEqual(fetchCalls[0], "https://xbadbrushx.github.io/OK-Record/update.json", "panel update check must read the GitHub Pages update manifest");
   assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.3", "newer update manifest must show an update notice");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：1.0.0"), "update notice must show the installed plugin version");
+  assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("网盘：https://pan.example.com/ok-record"), "update notice must include the configured netdisk URL");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("面板菜单：下载页_Download Page"), "update notice must point users to the download-page menu action");
+  const updateBadgeRow = document.querySelector(".ok-record-update-badge-row");
+  const updateBadgeButton = document.querySelector(".ok-record-update-badge");
+  assert(updateBadgeRow.classList.contains("ok-record-update-badge-row-visible"), "newer update manifest must show the top-right update badge");
+  assert.strictEqual(updateBadgeButton.querySelector(".ok-record-button-label").textContent, "可更新", "update badge must use the requested visible label");
+  assert.strictEqual(updateBadgeButton.disabled, false, "visible update badge must be clickable");
+
+  updateBadgeButton.dispatchEvent(new MockEvent("click"));
+  await flushMicrotasks();
+  const updateDialog = document.querySelector(".ok-record-update-dialog");
+  assert(updateDialog.classList.contains("ok-record-update-dialog-visible"), "clicking the update badge must show the download dialog");
+  assert.strictEqual(document.querySelector(".ok-record-update-dialog-title").textContent, "发现新版本 1.0.3", "update dialog must show the latest version");
+  assert(document.querySelector(".ok-record-update-dialog-version").textContent.includes("当前版本：1.0.0"), "update dialog must show the installed plugin version");
+  assert.strictEqual(document.querySelector(".ok-record-update-dialog-summary").textContent, "测试更新提醒", "update dialog must show the update summary");
+  const updateLinkButtons = document.querySelectorAll(".ok-record-update-link-button");
+  assert.strictEqual(updateLinkButtons.length, 2, "update dialog must offer GitHub and netdisk download entries");
+  assert.strictEqual(updateLinkButtons[0].querySelector(".ok-record-button-label").textContent, "GitHub", "first update dialog link must be GitHub");
+  assert.strictEqual(updateLinkButtons[1].querySelector(".ok-record-button-label").textContent, "网盘", "second update dialog link must be netdisk");
+  assert.strictEqual(updateLinkButtons[1].disabled, false, "netdisk link button must be enabled when update.json provides netdiskUrl");
+
+  updateLinkButtons[0].dispatchEvent(new MockEvent("click"));
+  await flushMicrotasks();
+  assert.strictEqual(openExternalCalls.length, 2, "GitHub update dialog button must open one external URL");
+  assert.strictEqual(openExternalCalls[1].url, "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3", "GitHub update dialog button must open the release page");
+  assert(!updateDialog.classList.contains("ok-record-update-dialog-visible"), "successful external-link open must hide the update dialog");
+
+  updateBadgeButton.dispatchEvent(new MockEvent("click"));
+  await flushMicrotasks();
+  updateLinkButtons[1].dispatchEvent(new MockEvent("click"));
+  await flushMicrotasks();
+  assert.strictEqual(openExternalCalls.length, 3, "netdisk update dialog button must open one external URL");
+  assert.strictEqual(openExternalCalls[2].url, "https://pan.example.com/ok-record", "netdisk update dialog button must open the configured netdisk URL");
 
   const numberInputs = document.querySelectorAll(".ok-record-number-input");
   assert(numberInputs.length >= 4, "panel must render recording scheduler numeric inputs");

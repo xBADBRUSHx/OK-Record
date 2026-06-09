@@ -18,6 +18,7 @@ const {
   createButtonRow,
   setButtonLabel,
   setButtonTextMetrics,
+  setControlDisabled,
 } = require("./panel-dom");
 
 function createQualityPresetField({ presets, state, handlers }) {
@@ -204,6 +205,83 @@ function setTimerStatusButtonMetrics(button) {
   if (label) {
     label.style.fontWeight = "700";
   }
+}
+
+function renderUpdateBadge(refs, state = {}) {
+  if (!refs.updateBadgeRowNode || !refs.updateBadgeButtonNode) {
+    return;
+  }
+
+  const updateAvailable = Boolean(state.updateAvailable);
+  const versionText = String(state.updateVersion || "").trim();
+  refs.updateBadgeRowNode.className = [
+    "ok-record-update-badge-row",
+    updateAvailable ? "ok-record-update-badge-row-visible" : "",
+  ].filter(Boolean).join(" ");
+  refs.updateBadgeButtonNode.disabled = !updateAvailable;
+  refs.updateBadgeButtonNode.setAttribute("aria-disabled", String(!updateAvailable));
+  refs.updateBadgeButtonNode.title = updateAvailable ?
+    `发现新版本${versionText ? ` ${versionText}` : ""}，点击查看下载链接` :
+    "暂无可用更新";
+  refs.updateBadgeButtonNode.setAttribute("aria-label", refs.updateBadgeButtonNode.title);
+}
+
+function createUpdateBadge({ refs, state, handlers }) {
+  refs.updateBadgeRowNode = document.createElement("div");
+  refs.updateBadgeRowNode.className = "ok-record-update-badge-row";
+  refs.updateBadgeButtonNode = createButton("可更新", handlers.onShowUpdateDialog, "ok-record-update-badge");
+  refs.updateBadgeRowNode.appendChild(refs.updateBadgeButtonNode);
+  renderUpdateBadge(refs, state);
+  return refs.updateBadgeRowNode;
+}
+
+function createUpdateDialog({ refs, handlers }) {
+  refs.updateDialogNode = document.createElement("div");
+  refs.updateDialogNode.className = "ok-record-update-dialog";
+  refs.updateDialogNode.setAttribute("role", "dialog");
+  refs.updateDialogNode.setAttribute("aria-modal", "true");
+  refs.updateDialogNode.setAttribute("aria-labelledby", "ok-record-update-dialog-title");
+
+  const panel = document.createElement("div");
+  panel.className = "ok-record-update-dialog-panel";
+
+  const header = document.createElement("div");
+  header.className = "ok-record-update-dialog-header";
+
+  refs.updateDialogTitleNode = document.createElement("div");
+  refs.updateDialogTitleNode.className = "ok-record-update-dialog-title";
+  refs.updateDialogTitleNode.id = "ok-record-update-dialog-title";
+  refs.updateDialogTitleNode.setAttribute("id", "ok-record-update-dialog-title");
+
+  refs.updateDialogCloseButtonNode = createButton("X", handlers.onHideUpdateDialog, "ok-record-notice-close-button");
+  refs.updateDialogCloseButtonNode.setAttribute("aria-label", "关闭更新下载面板");
+  refs.updateDialogCloseButtonNode.title = "关闭";
+
+  refs.updateDialogVersionNode = document.createElement("div");
+  refs.updateDialogVersionNode.className = "ok-record-update-dialog-version";
+
+  refs.updateDialogSummaryNode = document.createElement("div");
+  refs.updateDialogSummaryNode.className = "ok-record-update-dialog-summary";
+
+  const actions = document.createElement("div");
+  actions.className = "ok-record-update-dialog-actions";
+  refs.updateDialogGithubButtonNode = createButton("GitHub", handlers.onOpenUpdateGithub, "ok-record-update-link-button ok-record-update-link-primary");
+  refs.updateDialogNetdiskButtonNode = createButton("网盘", handlers.onOpenUpdateNetdisk, "ok-record-update-link-button");
+  appendChildren(actions, [refs.updateDialogGithubButtonNode, refs.updateDialogNetdiskButtonNode]);
+
+  refs.updateDialogHintNode = document.createElement("div");
+  refs.updateDialogHintNode.className = "ok-record-update-dialog-hint";
+
+  appendChildren(header, [refs.updateDialogTitleNode, refs.updateDialogCloseButtonNode]);
+  appendChildren(panel, [
+    header,
+    refs.updateDialogVersionNode,
+    refs.updateDialogSummaryNode,
+    actions,
+    refs.updateDialogHintNode,
+  ]);
+  refs.updateDialogNode.appendChild(panel);
+  return refs.updateDialogNode;
 }
 
 function createPrimaryActionsGroup({ refs, buttonStates, handlers }) {
@@ -427,7 +505,9 @@ function renderPanel(options) {
     }
     spacedPanelSections.push(section);
   });
+  spacedPanelSections.unshift(createUpdateBadge({ ...options, refs }));
   spacedPanelSections.push(createExportNoticePanel({ ...options, refs }));
+  spacedPanelSections.push(createUpdateDialog({ ...options, refs }));
   appendChildren(panel, spacedPanelSections);
   body.appendChild(panel);
   return refs;
@@ -466,6 +546,49 @@ function hideExportNotice(refs) {
   }
 }
 
+function showUpdateDialog(refs, options = {}) {
+  if (!refs.updateDialogNode) {
+    return;
+  }
+
+  const currentVersion = String(options.currentVersion || "").trim() || "未知";
+  const latestVersion = String(options.version || "").trim() || "未知";
+  const summary = String(options.summary || "").trim() || "可以下载新版 OK-Record 安装文件。";
+  const githubUrl = String(options.githubUrl || "").trim();
+  const netdiskUrl = String(options.netdiskUrl || "").trim();
+
+  refs.updateDialogNode.className = "ok-record-update-dialog ok-record-update-dialog-visible";
+  if (refs.updateDialogTitleNode) {
+    refs.updateDialogTitleNode.textContent = `发现新版本 ${latestVersion}`;
+  }
+  if (refs.updateDialogVersionNode) {
+    refs.updateDialogVersionNode.textContent = `当前版本：${currentVersion}　最新版本：${latestVersion}`;
+  }
+  if (refs.updateDialogSummaryNode) {
+    refs.updateDialogSummaryNode.textContent = summary;
+  }
+  if (refs.updateDialogGithubButtonNode) {
+    refs.updateDialogGithubButtonNode.title = githubUrl || "GitHub 下载页未配置";
+    setControlDisabled(refs.updateDialogGithubButtonNode, !githubUrl);
+  }
+  if (refs.updateDialogNetdiskButtonNode) {
+    refs.updateDialogNetdiskButtonNode.title = netdiskUrl || "网盘链接未配置";
+    setControlDisabled(refs.updateDialogNetdiskButtonNode, !netdiskUrl);
+  }
+  if (refs.updateDialogHintNode) {
+    refs.updateDialogHintNode.textContent = netdiskUrl ?
+      "请选择 GitHub 或网盘下载新版 .ccx 安装文件。" :
+      "网盘链接未配置，可以先使用 GitHub 下载。";
+  }
+}
+
+function hideUpdateDialog(refs) {
+  if (!refs.updateDialogNode) {
+    return;
+  }
+  refs.updateDialogNode.className = "ok-record-update-dialog";
+}
+
 module.exports = {
   renderPanel,
   renderExportStatusLabel,
@@ -473,6 +596,9 @@ module.exports = {
   renderRecordingStatusLabel,
   renderStepCaptureButtonLabel,
   setTimerStatusButtonMetrics,
+  renderUpdateBadge,
+  showUpdateDialog,
+  hideUpdateDialog,
   showExportNotice,
   hideExportNotice,
 };

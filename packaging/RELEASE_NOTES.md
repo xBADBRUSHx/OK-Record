@@ -7,6 +7,7 @@
 - 导出视频改为目标时长优先：当源帧数量超过目标时长和输出 FPS 可容纳的帧数时，会保留首尾帧并均匀抽取中间代表帧，不再强制导出超长视频。
 - 导出完成详情新增源帧数、实际导出帧数、跳过帧数和代表帧停留时间，便于判断是否发生抽帧。
 - “每帧停留”设置允许更小的源帧间隔，避免大量帧压成短视频时被旧的 1/FPS 下限阻止。
+- 更新提醒改为面板右上角蓝色“可更新”入口，点击后可在弹窗中选择 GitHub 或网盘下载新版安装文件。
 - 明确当前版本需要 Photoshop 2023 24.4.0 或更高版本，以使用正式 Imaging API。
 
 ### English
@@ -14,6 +15,7 @@
 - Video export now prioritizes the target duration. If the source frame count is higher than the target duration and output FPS can contain, OK-Record keeps the first and last frames and samples representative middle frames evenly instead of forcing an overly long video.
 - Export details now include source frame count, exported representative frame count, skipped frame count, and representative-frame hold time.
 - The "Hold per Frame" setting allows smaller source-frame intervals so large frame sets can be compressed into short videos without the old 1/FPS lower bound.
+- Update reminders now use a blue top-right "Update" entry. Clicking it opens a dialog with GitHub and netdisk download choices.
 - The current build explicitly requires Photoshop 2023 24.4.0 or newer for the stable Imaging API.
 
 ## OK-Record v1.0.2 - 2026-06-03

@@ -115,6 +115,16 @@ let exportNoticeNode = null;
 let exportNoticeTitleNode = null;
 let exportNoticeBodyNode = null;
 let exportNoticeCloseButtonNode = null;
+let updateBadgeRowNode = null;
+let updateBadgeButtonNode = null;
+let updateDialogNode = null;
+let updateDialogTitleNode = null;
+let updateDialogVersionNode = null;
+let updateDialogSummaryNode = null;
+let updateDialogGithubButtonNode = null;
+let updateDialogNetdiskButtonNode = null;
+let updateDialogHintNode = null;
+let updateDialogCloseButtonNode = null;
 let intervalSecondsInputNode = null;
 let idleCaptureDelaySecondsInputNode = null;
 let idleCaptureMaxWaitSecondsInputNode = null;
@@ -1024,6 +1034,17 @@ function normalizeUpdateUrl(url, fieldName) {
   return value;
 }
 
+function normalizeExternalUpdateUrl(url, fieldName) {
+  const value = String(url || "").trim();
+  if (!value) {
+    return "";
+  }
+  if (!value.startsWith("https://")) {
+    throw new Error(`更新清单中的 ${fieldName} 必须是 https 地址`);
+  }
+  return value;
+}
+
 function normalizeUpdateManifest(payload) {
   if (!payload || typeof payload !== "object") {
     throw new Error("更新清单格式无效");
@@ -1041,6 +1062,7 @@ function normalizeUpdateManifest(payload) {
     version,
     releasePageUrl: normalizeUpdateUrl(payload.releasePageUrl, "releasePageUrl"),
     downloadUrl: normalizeUpdateUrl(payload.downloadUrl, "downloadUrl"),
+    netdiskUrl: normalizeExternalUpdateUrl(payload.netdiskUrl, "netdiskUrl"),
     summary: String(payload.summary || "").trim(),
   };
 }
@@ -1049,17 +1071,40 @@ function getUpdateDownloadPageUrl() {
   return (latestAvailableUpdate && latestAvailableUpdate.releasePageUrl) || DEFAULT_UPDATE_RELEASE_PAGE_URL;
 }
 
+function getUpdateDownloadTargets() {
+  return {
+    githubUrl: getUpdateDownloadPageUrl(),
+    netdiskUrl: (latestAvailableUpdate && latestAvailableUpdate.netdiskUrl) || "",
+  };
+}
+
+function getUpdateBadgeViewState() {
+  return {
+    updateAvailable: Boolean(latestAvailableUpdate),
+    updateVersion: latestAvailableUpdate ? latestAvailableUpdate.version : "",
+  };
+}
+
+function syncUpdateBadge() {
+  panelView.renderUpdateBadge({
+    updateBadgeRowNode,
+    updateBadgeButtonNode,
+  }, getUpdateBadgeViewState());
+}
+
 function showUpdateNotice(updateInfo, currentVersion) {
   const releasePageUrl = updateInfo.releasePageUrl || DEFAULT_UPDATE_RELEASE_PAGE_URL;
   const lines = [
     `当前版本：${currentVersion || "未知"}`,
     `最新版本：${updateInfo.version}`,
     updateInfo.summary,
+    updateInfo.netdiskUrl ? `网盘：${updateInfo.netdiskUrl}` : "网盘：未配置",
     "面板菜单：下载页_Download Page",
     `下载页：${releasePageUrl}`,
   ].filter(Boolean);
 
   showExportNotice(`发现新版本 ${updateInfo.version}`, lines, "success");
+  syncUpdateBadge();
   setStatus(formatRecorderStatus(`发现新版本 ${updateInfo.version}`));
 }
 
@@ -1116,28 +1161,67 @@ function queueUpdateCheck() {
   return updateCheckPromise;
 }
 
-async function openUpdateDownloadPage() {
+function showUpdateDownloadDialog() {
+  if (!latestAvailableUpdate) {
+    return;
+  }
+  const targets = getUpdateDownloadTargets();
+  panelView.showUpdateDialog({
+    updateDialogNode,
+    updateDialogTitleNode,
+    updateDialogVersionNode,
+    updateDialogSummaryNode,
+    updateDialogGithubButtonNode,
+    updateDialogNetdiskButtonNode,
+    updateDialogHintNode,
+  }, {
+    currentVersion: getCurrentPluginVersion(),
+    version: latestAvailableUpdate.version,
+    summary: latestAvailableUpdate.summary,
+    githubUrl: targets.githubUrl,
+    netdiskUrl: targets.netdiskUrl,
+  });
+}
+
+function hideUpdateDialog() {
+  panelView.hideUpdateDialog({ updateDialogNode });
+}
+
+async function openExternalUpdateUrl(url, label) {
   try {
-    const url = getUpdateDownloadPageUrl();
+    const targetUrl = String(url || "").trim();
+    if (!targetUrl) {
+      throw new Error(`${label}链接未配置`);
+    }
     const shell = uxp.shell;
     if (!shell || typeof shell.openExternal !== "function") {
       throw new Error("UXP shell.openExternal 不可用");
     }
 
-    const result = await shell.openExternal(url, "打开 OK-Record 下载页。");
+    const result = await shell.openExternal(targetUrl, `打开 OK-Record ${label}。`);
     if (result) {
       throw new Error(result);
     }
 
     setRecorderState({ lastError: "" });
-    setStatus(formatRecorderStatus(`已打开下载页：${url}`));
+    hideUpdateDialog();
+    setStatus(formatRecorderStatus(`已打开${label}：${targetUrl}`));
   } catch (error) {
     setRecorderState({ lastError: formatError(error) });
-    setStatus(formatRecorderStatus("打开下载页失败"));
-    showExportNotice("打开下载页失败", [formatError(error)], "error");
-    console.log("[OK-Record] open update download page failed:", error);
+    setStatus(formatRecorderStatus(`打开${label}失败`));
+    showExportNotice(`打开${label}失败`, [formatError(error)], "error");
+    console.log(`[OK-Record] open update ${label} failed:`, error);
     throw error;
   }
+}
+
+async function openUpdateDownloadPage() {
+  await openExternalUpdateUrl(getUpdateDownloadPageUrl(), "下载页");
+}
+
+async function openUpdateNetdiskPage() {
+  const targets = getUpdateDownloadTargets();
+  await openExternalUpdateUrl(targets.netdiskUrl, "网盘下载页");
 }
 
 async function chooseProjectOutputDir() {
@@ -3351,6 +3435,16 @@ function resetPanelNodeReferences() {
   exportNoticeTitleNode = null;
   exportNoticeBodyNode = null;
   exportNoticeCloseButtonNode = null;
+  updateBadgeRowNode = null;
+  updateBadgeButtonNode = null;
+  updateDialogNode = null;
+  updateDialogTitleNode = null;
+  updateDialogVersionNode = null;
+  updateDialogSummaryNode = null;
+  updateDialogGithubButtonNode = null;
+  updateDialogNetdiskButtonNode = null;
+  updateDialogHintNode = null;
+  updateDialogCloseButtonNode = null;
   intervalSecondsInputNode = null;
   idleCaptureDelaySecondsInputNode = null;
   idleCaptureMaxWaitSecondsInputNode = null;
@@ -3377,6 +3471,16 @@ function assignPanelNodeReferences(refs) {
   exportNoticeTitleNode = refs.exportNoticeTitleNode || null;
   exportNoticeBodyNode = refs.exportNoticeBodyNode || null;
   exportNoticeCloseButtonNode = refs.exportNoticeCloseButtonNode || null;
+  updateBadgeRowNode = refs.updateBadgeRowNode || null;
+  updateBadgeButtonNode = refs.updateBadgeButtonNode || null;
+  updateDialogNode = refs.updateDialogNode || null;
+  updateDialogTitleNode = refs.updateDialogTitleNode || null;
+  updateDialogVersionNode = refs.updateDialogVersionNode || null;
+  updateDialogSummaryNode = refs.updateDialogSummaryNode || null;
+  updateDialogGithubButtonNode = refs.updateDialogGithubButtonNode || null;
+  updateDialogNetdiskButtonNode = refs.updateDialogNetdiskButtonNode || null;
+  updateDialogHintNode = refs.updateDialogHintNode || null;
+  updateDialogCloseButtonNode = refs.updateDialogCloseButtonNode || null;
   intervalSecondsInputNode = refs.intervalSecondsInputNode || null;
   idleCaptureDelaySecondsInputNode = refs.idleCaptureDelaySecondsInputNode || null;
   idleCaptureMaxWaitSecondsInputNode = refs.idleCaptureMaxWaitSecondsInputNode || null;
@@ -3552,6 +3656,7 @@ function renderPanel() {
         recorderState.frameQualityPreset :
         DEFAULT_FRAME_QUALITY_PRESET_ID,
       captureResolutionPresetId: getCaptureResolutionPresetIdForMaxWidth(recorderState.exportMaxWidth),
+      ...getUpdateBadgeViewState(),
     },
     ranges: {
       minIntervalSeconds: MIN_INTERVAL_SECONDS,
@@ -3597,6 +3702,10 @@ function renderPanel() {
       onOpenExportFolder: () => openExportFolder(),
       onOpenLocalDocumentation: () => openLocalDocumentation(),
       onHideExportNotice: () => hideExportNotice(),
+      onShowUpdateDialog: () => showUpdateDownloadDialog(),
+      onHideUpdateDialog: () => hideUpdateDialog(),
+      onOpenUpdateGithub: () => openUpdateDownloadPage(),
+      onOpenUpdateNetdisk: () => openUpdateNetdiskPage(),
     },
   });
   assignPanelNodeReferences(refs);

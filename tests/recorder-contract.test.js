@@ -252,6 +252,14 @@ assert(
   updateManifest.downloadUrl.includes(`/v${manifest.version}/`) || updateManifest.downloadUrl.includes(`/${manifest.version}/`),
   "update manifest download URL must include the current package version",
 );
+assert(
+  Object.prototype.hasOwnProperty.call(updateManifest, "netdiskUrl"),
+  "update manifest must expose an optional netdiskUrl field for the panel update dialog",
+);
+assert(
+  !updateManifest.netdiskUrl || updateManifest.netdiskUrl.startsWith("https://"),
+  "update manifest netdiskUrl must be empty or an https URL",
+);
 
 assert.strictEqual(contract.commands, undefined, "shared contract must not keep retired Photoshop menu commands");
 assert(
@@ -772,6 +780,13 @@ assert(uxpMain.includes("compareVersionStrings(updateInfo.version, currentVersio
 assert(uxpMain.includes("openUpdateDownloadPage"), "UXP must expose a download-page action for update reminders");
 assert(uxpMain.includes("shell.openExternal"), "UXP must open the GitHub Release download page through the UXP shell external-url API");
 assert(uxpMain.includes("UPDATE_RELEASES_URL_PREFIX"), "UXP update manifest URLs must stay constrained to OK-Record GitHub Releases");
+assert(uxpMain.includes("netdiskUrl"), "UXP update manifest parsing must preserve the optional netdisk download URL");
+assert(panelViewModule.includes("ok-record-update-badge"), "panel view must render the visible available-update badge");
+assert(panelViewModule.includes("可更新"), "panel view must label the available-update badge in Chinese");
+assert(panelViewModule.includes("showUpdateDialog"), "panel view must own the update download dialog rendering");
+assert(panelStylesModule.includes(".ok-record-update-badge"), "panel styles must style the available-update badge");
+assert(panelStylesModule.includes(".ok-record-update-dialog"), "panel styles must style the update download dialog");
+assert(localDocumentation.includes("蓝色“可更新”按钮"), "user guide must describe the visible available-update badge");
 {
   const brandedSources = [
     readme,
