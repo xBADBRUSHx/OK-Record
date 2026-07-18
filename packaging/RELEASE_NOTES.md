@@ -1,5 +1,17 @@
 # OK-Record Release Notes
 
+## OK-Record v1.0.4 - 2026-07-18
+
+### 中文
+
+- 修复录制中的 PSD/PSB 关闭时，Photoshop 的关闭通知与文档引用失效顺序不稳定，或文档在定时采样前置检查之后关闭，导致错误弹出“请先保存”“当前录制文档已经关闭”等采样失败提示的问题。
+- 关闭当前录制文档现在会等待在途采样安全收尾后正常结束且不弹失败窗口；关闭无关文档不会停止录制，切换到其它文档和真实序列帧写入失败仍会按原有保护停止并报错。
+
+### English
+
+- Fixed Photoshop document-close timing races where notification/reference ordering or closure after scheduled-capture preflight could incorrectly show save-first or closed-document capture failures.
+- Closing the document bound to the active recording now lets any in-flight capture settle and ends recording normally without a failure dialog. Closing an unrelated document does not stop recording, while document switches and real frame-commit failures keep the existing protective failure behavior.
+
 ## OK-Record v1.0.3 - 2026-06-09
 
 ### 中文

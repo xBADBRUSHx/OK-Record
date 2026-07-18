@@ -508,10 +508,12 @@ assert(uxpMain.includes("DEFAULT_CAPTURE_ONLY_WHEN_CHANGED = settingsModel.DEFAU
 assert(recorderSchedulerModule.includes("DOCUMENT_CHANGE_EVENTS"), "scheduler owner must declare explicit Photoshop document change events");
 assert(uxpMain.includes("DOCUMENT_CHANGE_EVENTS = recorderScheduler.DOCUMENT_CHANGE_EVENTS"), "UXP shell must consume Photoshop document change events from the scheduler owner");
 assert(uxpMain.includes('DOCUMENT_CLOSE_EVENT = "close"'), "UXP must name the Photoshop document close event");
-assert(uxpMain.includes("queueDocumentCloseRecordingCheck"), "UXP document close handling must re-check the active document context before stopping recording");
-assert(uxpMain.includes("isActiveRecordingContextStillCurrent"), "UXP document close handling must not stop recording when an unrelated document closes");
-assert(uxpMain.includes("validateReference"), "UXP document close handling must validate the locked Photoshop document reference before stopping recording");
-assert(uxpMain.includes("stopRecordingAfterDocumentClose"), "UXP document close handling must stop the recording runtime immediately");
+assert(recordingContextModule.includes("classifyRecordingContinuity"), "recording context owner must classify current, closed, changed, and unavailable document continuity");
+assert(uxpMain.includes("queueDocumentCloseRecordingCheck"), "UXP document close notifications must trigger bounded lifecycle reconciliation");
+assert(uxpMain.includes("reconcileActiveRecordingDocument"), "UXP close notifications and scheduled capture preflight must share one document lifecycle reconciliation path");
+assert(uxpMain.includes("validateReference"), "UXP document lifecycle reconciliation must validate the locked Photoshop document reference");
+assert(uxpMain.includes("stopRecordingAfterDocumentClose"), "UXP document close handling must converge on one normal recording finalizer");
+assert(!uxpMain.includes("setTimeout(runCloseCheck, 0)"), "UXP document close handling must not depend on one zero-delay host timing guess");
 for (const eventName of contract.scheduler.documentChangeEvents) {
   assert(recorderSchedulerModule.includes(`"${eventName}"`), `scheduler document change events must include ${eventName}`);
 }
@@ -611,7 +613,7 @@ assert(localDocumentation.includes("截图待放"), "local documentation must ke
 assert(localDocumentation.includes("images/02-install-ccx.jpg"), "local documentation must expose the Creative Cloud install screenshot");
 assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local documentation must expose the Creative Cloud installed-state screenshot");
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
-assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3"'), "local documentation must link to the GitHub Release download page");
+assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4"'), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
 assert.strictEqual(manifest.host.minVersion, "24.4.0", "manifest minimum Photoshop version must match the stable Imaging API requirement");
 assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.4.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");

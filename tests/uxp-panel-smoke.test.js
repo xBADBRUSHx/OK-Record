@@ -246,6 +246,7 @@ async function run() {
   let failStepWrite = false;
   let failExportSession = false;
   let hostModalFailureCount = 0;
+  let closeRecordingDocumentAfterNextContinuityCheck = false;
   const executeAsModalOptions = [];
   const confirmMock = (message) => {
     confirmMessages.push(String(message || ""));
@@ -327,9 +328,9 @@ async function run() {
       async json() {
         return {
           schema: "ok-record.update-manifest.v1",
-          version: "1.0.3",
-          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
-          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.3/OK-Record_with-ffmpeg.ccx",
+          version: "1.0.4",
+          releasePageUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4",
+          downloadUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.4/OK-Record_with-ffmpeg.ccx",
           netdiskUrl: "https://pan.example.com/ok-record",
           summary: "测试更新提醒",
         };
@@ -342,11 +343,24 @@ async function run() {
         actionListeners.push({ events, listener });
       },
       validateReference(ref) {
-        return Boolean(
+        const documentId = Number(ref && ref._id);
+        const referenceOpen = Boolean(
           ref &&
           ref._ref === "document" &&
-          openDocumentIds.has(Number(ref._id))
+          openDocumentIds.has(documentId)
         );
+        if (referenceOpen && closeRecordingDocumentAfterNextContinuityCheck) {
+          closeRecordingDocumentAfterNextContinuityCheck = false;
+          const closeListener = actionListeners.find((entry) => Array.isArray(entry.events) && entry.events.includes("close"));
+          if (closeListener) {
+            closeListener.listener("close", {});
+          }
+          openDocumentIds.delete(documentId);
+          if (photoshopMock.app.activeDocument && Number(photoshopMock.app.activeDocument.id) === documentId) {
+            photoshopMock.app.activeDocument = null;
+          }
+        }
+        return referenceOpen;
       },
     },
     core: {
@@ -680,7 +694,7 @@ async function run() {
   assert.strictEqual(openExternalCalls.length, 1, "download-page flyout menu must open one external URL");
   assert.strictEqual(
     openExternalCalls[0].url,
-    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4",
     "download-page flyout menu must open the current public release before a newer manifest is fetched",
   );
 
@@ -717,7 +731,7 @@ async function run() {
   assert.strictEqual(openPathCalls.length, 1, "only the panel flyout documentation action should open documentation");
   assert.strictEqual(fetchCalls.length, 1, "panel show must fetch the static update manifest once");
   assert.strictEqual(fetchCalls[0], "https://xbadbrushx.github.io/OK-Record/update.json", "panel update check must read the GitHub Pages update manifest");
-  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.3", "newer update manifest must show an update notice");
+  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "发现新版本 1.0.4", "newer update manifest must show an update notice");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("当前版本：1.0.0"), "update notice must show the installed plugin version");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("网盘：https://pan.example.com/ok-record"), "update notice must include the configured netdisk URL");
   assert(document.querySelector(".ok-record-export-notice-body").textContent.includes("面板菜单：下载页_Download Page"), "update notice must point users to the download-page menu action");
@@ -732,7 +746,7 @@ async function run() {
   await flushMicrotasks();
   const updateDialog = document.querySelector(".ok-record-update-dialog");
   assert(updateDialog.classList.contains("ok-record-update-dialog-visible"), "clicking the update badge must show the download dialog");
-  assert.strictEqual(document.querySelector(".ok-record-update-dialog-title").textContent, "发现新版本 1.0.3", "update dialog must show the latest version");
+  assert.strictEqual(document.querySelector(".ok-record-update-dialog-title").textContent, "发现新版本 1.0.4", "update dialog must show the latest version");
   assert(document.querySelector(".ok-record-update-dialog-version").textContent.includes("当前版本：1.0.0"), "update dialog must show the installed plugin version");
   assert.strictEqual(document.querySelector(".ok-record-update-dialog-summary").textContent, "测试更新提醒", "update dialog must show the update summary");
   const updateLinkButtons = document.querySelectorAll(".ok-record-update-link-button");
@@ -744,7 +758,7 @@ async function run() {
   updateLinkButtons[0].dispatchEvent(new MockEvent("click"));
   await flushMicrotasks();
   assert.strictEqual(openExternalCalls.length, 2, "GitHub update dialog button must open one external URL");
-  assert.strictEqual(openExternalCalls[1].url, "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3", "GitHub update dialog button must open the release page");
+  assert.strictEqual(openExternalCalls[1].url, "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4", "GitHub update dialog button must open the release page");
   assert(!updateDialog.classList.contains("ok-record-update-dialog-visible"), "successful external-link open must hide the update dialog");
 
   updateBadgeButton.dispatchEvent(new MockEvent("click"));
@@ -844,6 +858,7 @@ async function run() {
   timers.length = 0;
   photoshopMock.app.activeDocument.path = savedDocumentPath;
   photoshopMock.app.activeDocument.id = 1;
+  const recordingDocument = photoshopMock.app.activeDocument;
   recordingButton.dispatchEvent(new MockEvent("click"));
   await waitForCondition(() => writeFrameCount === 2, "recording can restart from an existing saved PSD with unsaved canvas edits");
   await waitForCondition(
@@ -859,6 +874,11 @@ async function run() {
     "录制中 2 帧",
     "closing an unrelated Photoshop document must not stop the active recording document",
   );
+  const unrelatedCloseRecheck = timers.pop();
+  assert(unrelatedCloseRecheck, "an unrelated close notification must schedule a document lifecycle recheck");
+  unrelatedCloseRecheck();
+  await flushMicrotasks();
+
   photoshopMock.app.activeDocument.path = path.join(repoRoot, "tests", "out", "other.psd");
   photoshopMock.app.activeDocument.id = 2;
   openDocumentIds.add(2);
@@ -869,12 +889,28 @@ async function run() {
     "录制中 2 帧",
     "closing an unrelated Photoshop document while another document is active must not stop the locked recording document",
   );
-  openDocumentIds.delete(1);
-  documentCloseListener.listener("close", {});
+  recordingDocument.path = savedDocumentPath;
+  recordingDocument.id = 1;
+  photoshopMock.app.activeDocument = recordingDocument;
+  const switchedCloseRecheck = timers.pop();
+  assert(switchedCloseRecheck, "a close notification while another document is active must schedule a lifecycle recheck");
+  switchedCloseRecheck();
+  await flushMicrotasks();
+
+  const alertCountBeforeRecordingDocumentClose = alertMessages.length;
+  closeRecordingDocumentAfterNextContinuityCheck = true;
+  const scheduledCaptureAfterDocumentClose = timers.shift();
+  assert(scheduledCaptureAfterDocumentClose, "the scheduled capture must remain available for the close-during-preflight regression");
+  scheduledCaptureAfterDocumentClose();
   await flushMicrotasks();
   await waitForCondition(
     () => recordingButton.querySelector(".ok-record-button-label").textContent === "开始录制",
-    "closing the PSD while recording must end the recording immediately",
+    "a recording document closed after scheduled-capture preflight must end recording cleanly",
+  );
+  assert.deepStrictEqual(
+    alertMessages.slice(alertCountBeforeRecordingDocumentClose),
+    [],
+    "closing the recording document after scheduled-capture preflight must not show a capture failure alert",
   );
   while (timers.length > 0) {
     const staleTimer = timers.shift();
@@ -887,8 +923,11 @@ async function run() {
   numberInputs[1].dispatchEvent(new MockEvent("change"));
   const newSavedDocumentPath = path.join(repoRoot, "tests", "out", "new.psd");
   const newSavedDocumentDefaultOutputDir = path.join(repoRoot, "tests", "out", "OK-Record_new");
-  photoshopMock.app.activeDocument.path = newSavedDocumentPath;
-  photoshopMock.app.activeDocument.id = 3;
+  photoshopMock.app.activeDocument = {
+    ...recordingDocument,
+    path: newSavedDocumentPath,
+    id: 3,
+  };
   openDocumentIds.add(3);
   recordingButton.dispatchEvent(new MockEvent("click"));
   await waitForCondition(() => writeFrameCount === 3, "a newly saved PSD can start recording after a previous PSD close");

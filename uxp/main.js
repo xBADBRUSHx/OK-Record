@@ -53,6 +53,8 @@ const EXPORT_STATUS_PAINT_DELAY_MS = 80;
 const EXECUTE_AS_MODAL_TIMEOUT_MIN_PHOTOSHOP_VERSION = "25.10";
 const EXECUTE_AS_MODAL_COLLISION_TIMEOUT_SECONDS = 1;
 const HOST_MODAL_CAPTURE_RETRY_DELAY_MS = 2000;
+const DOCUMENT_CONTEXT_RECHECK_DELAY_MS = 100;
+const DOCUMENT_CONTEXT_RECHECK_MAX_ATTEMPTS = 10;
 const DEFAULT_CAPTURE_RESOLUTION_PRESET_ID = settingsModel.DEFAULT_CAPTURE_RESOLUTION_PRESET_ID;
 const CAPTURE_RESOLUTION_PRESET_LABELS = Object.freeze({
   [DEFAULT_CAPTURE_RESOLUTION_PRESET_ID]: "1080p",
@@ -98,13 +100,19 @@ const CLEAR_RECORDING_PANEL_MENU_ID = "clearRecordingTimeline";
 const UPDATE_MANIFEST_SCHEMA = "ok-record.update-manifest.v1";
 const UPDATE_MANIFEST_URL = "https://xbadbrushx.github.io/OK-Record/update.json";
 const UPDATE_RELEASES_URL_PREFIX = "https://github.com/xBADBRUSHx/OK-Record/releases/";
-const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3";
+const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4";
 const RECORDING_TIMELINE_ID = "Timeline";
 const STEP_FRAME_FILENAME_PREFIX = "step_";
 const STEP_FRAME_INDEX_DIGITS = 3;
 const DEFAULT_CAPTURE_ONLY_WHEN_CHANGED = settingsModel.DEFAULT_CAPTURE_ONLY_WHEN_CHANGED;
 const UNSAVED_DOCUMENT_RECORDING_MESSAGE = recordingContext.UNSAVED_DOCUMENT_RECORDING_MESSAGE;
 const DOCUMENT_CONTEXT_CHANGED_MESSAGE = recordingContext.DOCUMENT_CONTEXT_CHANGED_MESSAGE;
+const DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE = recordingContext.DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE;
+const RECORDING_CONTINUITY_STATES = recordingContext.RECORDING_CONTINUITY_STATES;
+const FRAME_CAPTURE_FAILURE_PHASES = Object.freeze({
+  documentRead: "documentRead",
+  frameCommit: "frameCommit",
+});
 const DOCUMENT_CLOSE_EVENT = "close";
 const DOCUMENT_CHANGE_EVENTS = recorderScheduler.DOCUMENT_CHANGE_EVENTS;
 const RECORDER_STATES = recorderDomain.RECORDER_STATES;
@@ -150,6 +158,11 @@ let recordingLoopActive = false;
 let recordingPauseRequested = false;
 let captureTimerId = null;
 let idleCaptureDeadlineTimerId = null;
+let documentCloseRecheckTimerId = null;
+let documentCloseRecheckGeneration = 0;
+let documentCloseFinalizationPromise = null;
+let recordingDocumentCloseRequested = false;
+let recordingDocumentCloseCaptureSettled = false;
 let recorderHistoryPollId = null;
 let paintingTimerIdleTimeoutId = null;
 let paintingTimerTickId = null;
@@ -289,8 +302,9 @@ async function releaseIdleCaptureListener() {
 
 async function stopRecordingRuntimeSchedulers(options = {}) {
   stopRecorderHistoryPoll();
-  await releaseIdleCaptureListener();
   clearScheduledCapture();
+  clearDocumentCloseRecheck();
+  await releaseIdleCaptureListener();
   if (options.resetDocumentSignature) {
     recorderDocumentSignature = "";
     activeRecordingContext = null;
@@ -313,13 +327,40 @@ function handleDocumentChangeEvent(eventName) {
 }
 
 function queueDocumentCloseRecordingCheck() {
-  const runCloseCheck = () => {
-    stopRecordingAfterDocumentClose().catch((error) => {
-      console.log("[OK-Record] stop recording after document close failed:", error);
-    });
+  clearDocumentCloseRecheck();
+  const generation = documentCloseRecheckGeneration;
+  let attemptCount = 0;
+
+  const runCloseCheck = async () => {
+    if (generation !== documentCloseRecheckGeneration || !isRecordingActiveOrPendingPause()) {
+      return;
+    }
+
+    try {
+      const continuity = await reconcileActiveRecordingDocument();
+      if (
+        generation !== documentCloseRecheckGeneration ||
+        continuity.state === RECORDING_CONTINUITY_STATES.closed ||
+        !isRecordingActiveOrPendingPause()
+      ) {
+        return;
+      }
+    } catch (error) {
+      console.log("[OK-Record] reconcile recording document after close notification failed:", error);
+      return;
+    }
+
+    attemptCount += 1;
+    if (attemptCount >= DOCUMENT_CONTEXT_RECHECK_MAX_ATTEMPTS) {
+      return;
+    }
+    documentCloseRecheckTimerId = setTimeout(() => {
+      documentCloseRecheckTimerId = null;
+      runCloseCheck();
+    }, DOCUMENT_CONTEXT_RECHECK_DELAY_MS);
   };
+
   runCloseCheck();
-  setTimeout(runCloseCheck, 0);
 }
 
 function handlePhotoshopUserIdle(eventName, descriptor) {
@@ -430,6 +471,7 @@ async function startRecording() {
     const idleCaptureSettings = readIdleCaptureSettingsFromPanel();
     const captureOnlyWhenChanged = DEFAULT_CAPTURE_ONLY_WHEN_CHANGED;
     await ensureIdleCaptureListener(getIdleCaptureListenerDelaySeconds(idleCaptureSettings));
+    resetRecordingDocumentCloseRequest();
     recordingPauseRequested = false;
     recordingLoopActive = true;
     activeRecordingContext = documentContext;
@@ -539,6 +581,7 @@ async function resumeRecording() {
     const idleCaptureSettings = readIdleCaptureSettingsFromPanel();
     const captureOnlyWhenChanged = DEFAULT_CAPTURE_ONLY_WHEN_CHANGED;
     await ensureIdleCaptureListener(getIdleCaptureListenerDelaySeconds(idleCaptureSettings));
+    resetRecordingDocumentCloseRequest();
     recordingPauseRequested = false;
     recordingLoopActive = true;
     activeRecordingContext = documentContext;
@@ -593,37 +636,46 @@ async function stopRecording() {
   setStatus(formatRecorderStatus(wasRunning ? "录制已停止" : "录制未运行"));
 }
 
-async function stopRecordingAfterDocumentClose() {
-  const wasRecordingSession = isRecordingActiveOrPendingPause();
-  if (!wasRecordingSession) {
-    return;
+async function stopRecordingAfterDocumentClose(options = {}) {
+  recordingDocumentCloseRequested = true;
+  if (options.captureSettled) {
+    recordingDocumentCloseCaptureSettled = true;
   }
-  if (isActiveRecordingContextStillCurrent()) {
-    return;
-  }
-  if (isActiveRecordingDocumentReferenceOpen()) {
-    return;
+  if (documentCloseFinalizationPromise) {
+    return documentCloseFinalizationPromise;
   }
 
-  const wasBusy = isRecorderBusy();
-  recordingLoopActive = false;
-  recordingPauseRequested = false;
-  await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
+  const finalization = (async () => {
+    const captureWasBusy = isRecorderBusy();
+    recordingLoopActive = false;
+    recordingPauseRequested = false;
+    await stopRecordingRuntimeSchedulers();
 
-  if (wasBusy || isRecorderBusy()) {
-    setRecorderState({
-      nextCaptureAt: "",
-      documentDirty: false,
-      lastError: "",
-    });
+    if (captureWasBusy && !recordingDocumentCloseCaptureSettled) {
+      setRecorderState({
+        nextCaptureAt: "",
+        documentDirty: false,
+        lastError: "",
+      });
+      updateControlState();
+      setStatus(formatRecorderStatus("PSD 文档已关闭，当前采样完成后录制会结束"));
+      return;
+    }
+
+    await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
+    setRecorderState(recorderDomain.stopRecordingState(recorderState));
+    resetRecordingDocumentCloseRequest();
     updateControlState();
-    setStatus(formatRecorderStatus("PSD 文档已关闭，当前采样完成后录制会结束"));
-    return;
+    setStatus(formatRecorderStatus("PSD 文档已关闭，录制已结束"));
+  })();
+  documentCloseFinalizationPromise = finalization;
+  try {
+    return await finalization;
+  } finally {
+    if (documentCloseFinalizationPromise === finalization) {
+      documentCloseFinalizationPromise = null;
+    }
   }
-
-  setRecorderState(recorderDomain.stopRecordingState(recorderState));
-  updateControlState();
-  setStatus(formatRecorderStatus("PSD 文档已关闭，录制已结束"));
 }
 
 async function clearRecordingTimeline() {
@@ -1416,7 +1468,21 @@ async function runScheduledCapture(label, options) {
   clearScheduledCapture();
 
   try {
-    assertActiveRecordingContextStillCurrent();
+    const continuity = await reconcileActiveRecordingDocument();
+    if (continuity.state === RECORDING_CONTINUITY_STATES.closed || !recordingLoopActive) {
+      return null;
+    }
+    if (continuity.state === RECORDING_CONTINUITY_STATES.unavailable) {
+      const retryCount = Math.max(0, Math.floor(Number(options && options.documentContextRetryCount) || 0));
+      if (retryCount < DOCUMENT_CONTEXT_RECHECK_MAX_ATTEMPTS) {
+        deferScheduledCaptureForDocumentContext(label, options, retryCount + 1);
+        return null;
+      }
+      throw new Error(DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE);
+    }
+    if (continuity.state === RECORDING_CONTINUITY_STATES.changed) {
+      throw new Error(DOCUMENT_CONTEXT_CHANGED_MESSAGE);
+    }
     if (shouldSkipScheduledCapture(options)) {
       skipScheduledCapture();
       if (recordingLoopActive) {
@@ -1437,6 +1503,11 @@ async function runScheduledCapture(label, options) {
       deferHostModalCollision: true,
     });
 
+    if (recordingDocumentCloseRequested) {
+      await stopRecordingAfterDocumentClose({ captureSettled: true });
+      return null;
+    }
+
     if (recordingPauseRequested) {
       recordingPauseRequested = false;
       updateControlState();
@@ -1451,11 +1522,22 @@ async function runScheduledCapture(label, options) {
       setStatus(formatRecorderStatus("录制已暂停"));
     }
   } catch (error) {
+    if (isDocumentReadCaptureFailure(error)) {
+      const continuity = recordingDocumentCloseRequested ?
+        { state: RECORDING_CONTINUITY_STATES.closed } :
+        inspectActiveRecordingContinuity();
+      if (continuity.state === RECORDING_CONTINUITY_STATES.closed) {
+        await stopRecordingAfterDocumentClose({ captureSettled: true });
+        return null;
+      }
+    }
+
     if (recordingLoopActive && recorderScheduler.isHostModalCollisionError(error)) {
       deferScheduledCaptureForHostModal(label);
       return null;
     }
 
+    resetRecordingDocumentCloseRequest();
     recordingLoopActive = false;
     recordingPauseRequested = false;
     await stopRecordingRuntimeSchedulers({ resetDocumentSignature: true });
@@ -1524,6 +1606,25 @@ function deferScheduledCaptureForHostModal(label) {
   }, HOST_MODAL_CAPTURE_RETRY_DELAY_MS);
   updateControlState();
   setStatus(formatRecorderStatus(`${label}：Photoshop 正在变换或显示模态窗口，等待完成后继续采样`));
+}
+
+function deferScheduledCaptureForDocumentContext(label, options, retryCount) {
+  clearScheduledCapture();
+  const nextCaptureAt = new Date(Date.now() + DOCUMENT_CONTEXT_RECHECK_DELAY_MS).toISOString();
+  setRecorderState({
+    state: RECORDER_STATES.recording,
+    nextCaptureAt,
+    lastError: "",
+  });
+  captureTimerId = setTimeout(() => {
+    runScheduledCapture(label, {
+      ...options,
+      force: true,
+      documentContextRetryCount: retryCount,
+    }).catch(() => {});
+  }, DOCUMENT_CONTEXT_RECHECK_DELAY_MS);
+  updateControlState();
+  setStatus(formatRecorderStatus(`${label}：正在等待 Photoshop 完成文档状态更新`));
 }
 
 async function captureStepFrame(options) {
@@ -1739,28 +1840,38 @@ async function captureFrame(options) {
     logCaptureDiagnostics("capture frame", captureDiagnostics);
     return result;
   } catch (error) {
+    const captureError = markFrameCaptureFailurePhase(
+      error,
+      modalReadCompleted ? FRAME_CAPTURE_FAILURE_PHASES.frameCommit : FRAME_CAPTURE_FAILURE_PHASES.documentRead,
+    );
     if (
       options &&
       options.deferHostModalCollision &&
       !modalReadCompleted &&
-      recorderScheduler.isHostModalCollisionError(error)
+      recorderScheduler.isHostModalCollisionError(captureError)
     ) {
-      console.log("[OK-Record] capture frame deferred because Photoshop is modal:", formatError(error));
-      throw error;
+      console.log("[OK-Record] capture frame deferred because Photoshop is modal:", formatError(captureError));
+      throw captureError;
     }
 
-    setRecorderState({
-      state: RECORDER_STATES.error,
-      nextCaptureAt: "",
-      lastError: formatError(error),
-    });
-    updateControlState();
-    const message = `${label}失败：${formatError(error)}`;
-    setStatus(message);
-    showExportNotice(`${label}失败`, [formatError(error)], "error");
-    console.log("[OK-Record] capture frame failed:", error);
-    throw error;
+    console.log("[OK-Record] capture frame failed:", captureError);
+    throw captureError;
   }
+}
+
+function markFrameCaptureFailurePhase(error, phase) {
+  const captureError = error && typeof error === "object" ?
+    error :
+    new Error(formatError(error));
+  captureError.okRecordFrameCaptureFailurePhase = phase;
+  return captureError;
+}
+
+function isDocumentReadCaptureFailure(error) {
+  return Boolean(
+    error &&
+    error.okRecordFrameCaptureFailurePhase === FRAME_CAPTURE_FAILURE_PHASES.documentRead
+  );
 }
 
 async function restoreRecorderState() {
@@ -2076,18 +2187,21 @@ function getActiveDocumentDescriptor() {
     const activeDocument = photoshop.app && photoshop.app.activeDocument;
     if (!activeDocument) {
       return {
+        documentAvailable: false,
         documentPath: "",
         documentId: "",
         cloudDocument: false,
       };
     }
     return {
+      documentAvailable: true,
       documentPath: activeDocument.path || "",
       documentId: activeDocument.id === undefined || activeDocument.id === null ? "" : String(activeDocument.id),
       cloudDocument: Boolean(activeDocument.cloudDocument),
     };
   } catch (error) {
     return {
+      documentAvailable: false,
       documentPath: "",
       documentId: "",
       cloudDocument: false,
@@ -2128,38 +2242,60 @@ function requireCurrentRecordingContextForSession(actionLabel) {
 }
 
 function assertActiveRecordingContextStillCurrent() {
-  if (!activeRecordingContext) {
-    return requireCurrentRecordingContext();
+  const continuity = inspectActiveRecordingContinuity();
+  if (continuity.state === RECORDING_CONTINUITY_STATES.current) {
+    return continuity.context;
   }
-  const currentContext = requireCurrentRecordingContext();
-  if (!recordingContext.isSameRecordingContext(activeRecordingContext, currentContext)) {
-    throw new Error(DOCUMENT_CONTEXT_CHANGED_MESSAGE);
+  if (continuity.state === RECORDING_CONTINUITY_STATES.closed) {
+    throw new Error("当前录制文档已经关闭");
   }
-  return activeRecordingContext;
+  if (continuity.state === RECORDING_CONTINUITY_STATES.unavailable) {
+    throw new Error(DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE);
+  }
+  throw new Error(DOCUMENT_CONTEXT_CHANGED_MESSAGE);
 }
 
-function isActiveRecordingContextStillCurrent() {
-  if (!activeRecordingContext) {
-    return false;
-  }
+function inspectActiveRecordingContinuity() {
   const currentContext = createCurrentRecordingContext();
-  return currentContext.ok && recordingContext.isSameRecordingContext(activeRecordingContext, currentContext);
+  return recordingContext.classifyRecordingContinuity({
+    activeContext: activeRecordingContext,
+    currentContext,
+    activeDocumentReferenceOpen: isActiveRecordingDocumentReferenceOpen(activeRecordingContext),
+  });
 }
 
-function isActiveRecordingDocumentReferenceOpen() {
-  if (!activeRecordingContext || !activeRecordingContext.documentId) {
-    return true;
+async function reconcileActiveRecordingDocument() {
+  const continuity = inspectActiveRecordingContinuity();
+  if (continuity.state === RECORDING_CONTINUITY_STATES.closed) {
+    await stopRecordingAfterDocumentClose();
+  }
+  return continuity;
+}
+
+function isActiveRecordingDocumentReferenceOpen(context = activeRecordingContext) {
+  if (!context || !context.documentId) {
+    return null;
   }
 
-  const documentId = Number(activeRecordingContext.documentId);
+  const documentId = Number(context.documentId);
   if (!Number.isFinite(documentId) || documentId <= 0) {
-    return true;
+    return null;
   }
 
-  return Boolean(photoshop.action.validateReference({
-    _ref: "document",
-    _id: documentId,
-  }));
+  try {
+    return Boolean(photoshop.action.validateReference({
+      _ref: "document",
+      _id: documentId,
+    }));
+  } catch (error) {
+    console.log("[OK-Record] validate recording document reference failed:", error);
+    return null;
+  }
+}
+
+function resetRecordingDocumentCloseRequest() {
+  recordingDocumentCloseRequested = false;
+  recordingDocumentCloseCaptureSettled = false;
 }
 
 async function getStepOutputDirNativePath() {
@@ -2544,6 +2680,14 @@ function clearScheduledCapture() {
   }
   clearIdleCaptureDeadline();
   idleCaptureWaiting = false;
+}
+
+function clearDocumentCloseRecheck() {
+  documentCloseRecheckGeneration += 1;
+  if (documentCloseRecheckTimerId !== null) {
+    clearTimeout(documentCloseRecheckTimerId);
+    documentCloseRecheckTimerId = null;
+  }
 }
 
 function clearIdleCaptureDeadline() {

@@ -239,21 +239,21 @@ function assertUpdateSurfaces(refs) {
 
   panelView.renderUpdateBadge(refs, {
     updateAvailable: true,
-    updateVersion: "1.0.3",
+    updateVersion: "1.0.4",
   });
   assert(hasClass(refs.updateBadgeSlotNode, "ok-record-update-badge-slot-visible"), "newer manifest must reveal the painting-timer-row update badge");
   assert.strictEqual(refs.updateBadgeButtonNode.disabled, false, "visible update badge must be clickable");
-  assert.strictEqual(refs.updateBadgeButtonNode.getAttribute("aria-label"), "发现新版本 1.0.3，点击查看下载链接");
+  assert.strictEqual(refs.updateBadgeButtonNode.getAttribute("aria-label"), "发现新版本 1.0.4，点击查看下载链接");
 
   panelView.showUpdateDialog(refs, {
     currentVersion: "1.0.2",
-    version: "1.0.3",
+    version: "1.0.4",
     summary: "测试更新摘要",
-    githubUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+    githubUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4",
     netdiskUrl: "",
   });
   assert(hasClass(refs.updateDialogNode, "ok-record-update-dialog-visible"), "clicking the update badge must show the download dialog");
-  assert.strictEqual(textOf(refs.updateDialogTitleNode), "发现新版本 1.0.3");
+  assert.strictEqual(textOf(refs.updateDialogTitleNode), "发现新版本 1.0.4");
   assert(textOf(refs.updateDialogVersionNode).includes("当前版本：1.0.2"), "update dialog must show the installed version");
   assert.strictEqual(textOf(refs.updateDialogSummaryNode), "测试更新摘要");
   assert.strictEqual(textOf(refs.updateDialogGithubButtonNode), "GitHub");
@@ -264,9 +264,9 @@ function assertUpdateSurfaces(refs) {
 
   panelView.showUpdateDialog(refs, {
     currentVersion: "1.0.2",
-    version: "1.0.3",
+    version: "1.0.4",
     summary: "测试更新摘要",
-    githubUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3",
+    githubUrl: "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4",
     netdiskUrl: "https://pan.example.com/ok-record",
   });
   assert.strictEqual(refs.updateDialogNetdiskButtonNode.disabled, false, "netdisk button must become enabled when update.json supplies a URL");

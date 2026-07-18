@@ -10,7 +10,7 @@ OK-Record 是一个 Photoshop 延时录制面板，用来把长时间绘画过�
 
 普通用户请从 GitHub Releases 下载 `.ccx` 安装文件：
 
-[Win OK-Record v1.0.3](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.3)
+[Win OK-Record v1.0.4](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4)
 
 图文使用说明：[OK-Record 使用说明](https://xbadbrushx.github.io/OK-Record/)
 

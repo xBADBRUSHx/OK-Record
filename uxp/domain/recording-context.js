@@ -4,7 +4,14 @@ const pathPolicy = require("./path-policy");
 
 const UNSAVED_DOCUMENT_RECORDING_MESSAGE = "开始录制前请先保存 Photoshop 文档为本地 PSD/PSB 文件。保存后重新点击开始录制。";
 const DOCUMENT_CONTEXT_CHANGED_MESSAGE = "当前 Photoshop 文档已经变化，录制已停止。请切回开始录制时的本地 PSD/PSB 文档后再继续。";
+const DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE = "当前 Photoshop 文档暂时不可用，录制已停止。请确认录制文档仍然打开并处于活动状态后再继续。";
 const SUPPORTED_DOCUMENT_EXTENSIONS = Object.freeze([".psd", ".psb"]);
+const RECORDING_CONTINUITY_STATES = Object.freeze({
+  current: "current",
+  closed: "closed",
+  changed: "changed",
+  unavailable: "unavailable",
+});
 
 function normalizeNativePath(value) {
   return String(value || "").trim().replace(/[\\/]+$/, "");
@@ -38,7 +45,21 @@ function isSupportedLocalDocumentPath(documentPath) {
 
 function createDocumentIdentity(input = {}) {
   const documentPath = normalizeNativePath(input.documentPath);
+  const documentId = input.documentId === undefined || input.documentId === null ? "" : String(input.documentId);
   const cloudDocument = Boolean(input.cloudDocument);
+  const documentAvailable = input.documentAvailable === undefined ?
+    Boolean(documentId || documentPath || cloudDocument) :
+    Boolean(input.documentAvailable);
+  if (!documentAvailable) {
+    return {
+      ok: false,
+      reason: "no-active-document",
+      message: UNSAVED_DOCUMENT_RECORDING_MESSAGE,
+      documentPath: "",
+      documentKey: "",
+      documentId: "",
+    };
+  }
   if (cloudDocument || !isSupportedLocalDocumentPath(documentPath)) {
     return {
       ok: false,
@@ -46,7 +67,7 @@ function createDocumentIdentity(input = {}) {
       message: UNSAVED_DOCUMENT_RECORDING_MESSAGE,
       documentPath,
       documentKey: "",
-      documentId: "",
+      documentId,
     };
   }
 
@@ -56,7 +77,7 @@ function createDocumentIdentity(input = {}) {
     message: "",
     documentPath,
     documentKey: normalizePathKey(documentPath),
-    documentId: input.documentId === undefined || input.documentId === null ? "" : String(input.documentId),
+    documentId,
   };
 }
 
@@ -129,6 +150,58 @@ function isSameRecordingContext(left, right) {
   );
 }
 
+function classifyRecordingContinuity(input = {}) {
+  const activeContext = input.activeContext;
+  const currentContext = input.currentContext;
+  if (!activeContext || !activeContext.documentKey) {
+    return {
+      state: RECORDING_CONTINUITY_STATES.unavailable,
+      reason: "active-recording-context-missing",
+      context: null,
+    };
+  }
+  if (input.activeDocumentReferenceOpen === false) {
+    return {
+      state: RECORDING_CONTINUITY_STATES.closed,
+      reason: "active-recording-document-closed",
+      context: null,
+    };
+  }
+  if (input.activeDocumentReferenceOpen !== true) {
+    return {
+      state: RECORDING_CONTINUITY_STATES.unavailable,
+      reason: "active-recording-document-reference-unavailable",
+      context: null,
+    };
+  }
+  if (currentContext && currentContext.ok) {
+    if (isSameRecordingContext(activeContext, currentContext)) {
+      return {
+        state: RECORDING_CONTINUITY_STATES.current,
+        reason: "",
+        context: activeContext,
+      };
+    }
+    return {
+      state: RECORDING_CONTINUITY_STATES.changed,
+      reason: "active-recording-context-changed",
+      context: null,
+    };
+  }
+  if (currentContext && currentContext.reason === "no-active-document") {
+    return {
+      state: RECORDING_CONTINUITY_STATES.unavailable,
+      reason: currentContext.reason,
+      context: null,
+    };
+  }
+  return {
+    state: RECORDING_CONTINUITY_STATES.changed,
+    reason: currentContext && currentContext.reason ? currentContext.reason : "active-recording-context-changed",
+    context: null,
+  };
+}
+
 function isSessionForRecordingContext(session, context) {
   return Boolean(
     session &&
@@ -151,9 +224,12 @@ function applyRecordingContextToSession(session, context) {
 
 module.exports = {
   DOCUMENT_CONTEXT_CHANGED_MESSAGE,
+  DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE,
+  RECORDING_CONTINUITY_STATES,
   SUPPORTED_DOCUMENT_EXTENSIONS,
   UNSAVED_DOCUMENT_RECORDING_MESSAGE,
   applyRecordingContextToSession,
+  classifyRecordingContinuity,
   createDocumentIdentity,
   createManualProjectOutputBinding,
   createRecordingContext,

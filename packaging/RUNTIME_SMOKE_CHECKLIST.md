@@ -33,5 +33,9 @@ Run this checklist in Photoshop after loading or installing the release package.
 - [ ] Create a new never-saved document and confirm Start Recording shows the save-first warning without writing frames.
 - [ ] Confirm the save-first warning appears in a dialog and remains selectable in the bottom notice.
 - [ ] Save that document as a local PSD/PSB, make another canvas edit without saving again, and confirm recording is allowed.
+- [ ] Close the saved document bound to the active recording and choose Save; confirm recording ends normally without a capture-failure dialog or another frame write.
+- [ ] Repeat the active recording document close with unsaved edits, choose Don't Save just before the next sampling interval, and confirm the same normal recording shutdown without a delayed capture-failure dialog.
+- [ ] Cancel a dirty-document close and confirm recording remains active.
+- [ ] Close an unrelated document and confirm the locked recording remains active.
 - [ ] While recording one saved PSD/PSB, switch to a different document before the next interval and confirm OK-Record stops instead of writing frames into the previous timeline.
 - [ ] Use the panel flyout menu clear-frame action and confirm it shows a destructive confirmation before clearing the current document's sequence frames.
