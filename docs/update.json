@@ -1,9 +1,9 @@
 {
   "schema": "ok-record.update-manifest.v1",
-  "version": "1.0.4",
-  "releaseDate": "2026-07-18",
-  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4",
-  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.4/OK-Record_with-ffmpeg.ccx",
-  "netdiskUrl": "https://pan.baidu.com/s/1xOP-BOT9yUuLjEKVITRvGg?pwd=9527",
-  "summary": "v1.0.4 修复录制中的 PSD/PSB 修改后关闭并选择不保存时，可能误弹定时采样失败的问题。关闭当前录制文档现在会正常结束录制，不影响已写入的序列帧。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
+  "version": "1.0.5",
+  "releaseDate": "2026-09-25",
+  "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5",
+  "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.5/OK-Record_with-ffmpeg.ccx",
+  "netdiskUrl": "",
+  "summary": "v1.0.5 修复切换 Photoshop 文档会中断录制的问题。切到其他文档时暂停采样，切回原文档后按完整间隔继续；已保存的序列帧不受影响。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
 }

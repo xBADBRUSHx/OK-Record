@@ -8,6 +8,7 @@ const DOCUMENT_CONTEXT_UNAVAILABLE_MESSAGE = "当前 Photoshop 文档暂时不�
 const SUPPORTED_DOCUMENT_EXTENSIONS = Object.freeze([".psd", ".psb"]);
 const RECORDING_CONTINUITY_STATES = Object.freeze({
   current: "current",
+  away: "away",
   closed: "closed",
   changed: "changed",
   unavailable: "unavailable",
@@ -146,6 +147,7 @@ function isSameRecordingContext(left, right) {
     left.documentKey &&
     right.documentKey &&
     left.documentKey === right.documentKey &&
+    left.documentId === right.documentId &&
     normalizePathKey(left.outputDir) === normalizePathKey(right.outputDir),
   );
 }
@@ -172,6 +174,13 @@ function classifyRecordingContinuity(input = {}) {
       state: RECORDING_CONTINUITY_STATES.unavailable,
       reason: "active-recording-document-reference-unavailable",
       context: null,
+    };
+  }
+  if (currentContext && currentContext.documentId && currentContext.documentId !== activeContext.documentId) {
+    return {
+      state: RECORDING_CONTINUITY_STATES.away,
+      reason: "active-recording-document-not-active",
+      context: activeContext,
     };
   }
   if (currentContext && currentContext.ok) {

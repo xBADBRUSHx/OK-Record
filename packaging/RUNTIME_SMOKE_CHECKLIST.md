@@ -37,5 +37,5 @@ Run this checklist in Photoshop after loading or installing the release package.
 - [ ] Repeat the active recording document close with unsaved edits, choose Don't Save just before the next sampling interval, and confirm the same normal recording shutdown without a delayed capture-failure dialog.
 - [ ] Cancel a dirty-document close and confirm recording remains active.
 - [ ] Close an unrelated document and confirm the locked recording remains active.
-- [ ] While recording one saved PSD/PSB, switch to a different document before the next interval and confirm OK-Record stops instead of writing frames into the previous timeline.
+- [ ] While recording one saved PSD/PSB, switch to a different document and confirm sampling waits without an error or a frame from the other document. Return to the recorded document and confirm sampling resumes after a full interval.
 - [ ] Use the panel flyout menu clear-frame action and confirm it shows a destructive confirmation before clearing the current document's sequence frames.

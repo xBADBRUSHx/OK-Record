@@ -10,11 +10,11 @@ It does not continuously record your screen. Instead, it saves snapshots of the 
 
 Download the `.ccx` installer from GitHub Releases:
 
-[Win OK-Record v1.0.4](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4)
+[Win OK-Record v1.0.5](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5)
 
 User guide with screenshots: [OK-Record User Guide](https://xbadbrushx.github.io/OK-Record/)
 
-When the panel opens, the plugin checks the public version. If a newer version is available, a blue update button appears at the right side of the painting-timer row; users can click it and choose GitHub or the netdisk link to manually download the new `.ccx` installer.
+When the panel opens, the plugin checks the public version. If a newer version is available, a blue update button appears at the right side of the painting-timer row; users can click it to download the new `.ccx` installer from GitHub.
 
 The current public package is a Windows test build. The release page provides two `.ccx` installers:
 
@@ -30,6 +30,7 @@ The author currently does not have a macOS development environment and cannot de
 - Saves canvas snapshots while you paint.
 - Lets you choose a capture interval, such as every few minutes or every 30 minutes.
 - Appends repeated recording work for the same PSD to one continuous frame timeline.
+- Pauses sampling while another Photoshop document is active, then starts a full new interval when you return to the original document. A manual pause requires a manual resume.
 - Saves manual step images when you want to capture an important stage immediately.
 - Exports saved frames into an MP4 time-lapse video.
 - Keeps frame files on disk so recordings can be scanned, recovered, and exported again.

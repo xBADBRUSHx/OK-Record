@@ -10,11 +10,11 @@ OK-Record 是一个 Photoshop 延时录制面板，用来把长时间绘画过�
 
 普通用户请从 GitHub Releases 下载 `.ccx` 安装文件：
 
-[Win OK-Record v1.0.4](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4)
+[Win OK-Record v1.0.5](https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5)
 
 图文使用说明：[OK-Record 使用说明](https://xbadbrushx.github.io/OK-Record/)
 
-插件打开面板时会检查公开版本；如果发现新版本，绘画计时行右侧会显示蓝色“可更新”按钮，用户点击后可选择 GitHub 或网盘手动下载新版 `.ccx` 安装文件。
+插件打开面板时会检查公开版本；如果发现新版本，绘画计时行右侧会显示蓝色“可更新”按钮，用户点击后可从 GitHub 手动下载新版 `.ccx` 安装文件。
 
 当前公开包是 Windows 测试版。Release 页面提供两个 `.ccx` 安装文件：
 
@@ -30,6 +30,7 @@ OK-Record 是一个 Photoshop 延时录制面板，用来把长时间绘画过�
 - 绘画时按间隔自动保存画布快照。
 - 可以设置采样间隔，例如几分钟一次或 30 分钟一次。
 - 同一个 PSD 的多次录制会追加到同一条序列帧时间线。
+- 录制中切到其他 Photoshop 文档会暂时停止采样；切回原文档后自动按完整间隔继续。手动暂停后需手动继续。
 - 可以手动采样，立即保存一张重要阶段图。
 - 可以把已保存的序列帧导出为 MP4 延时视频。
 - 序列帧保留在磁盘上，后续可以扫描、恢复和重新导出。

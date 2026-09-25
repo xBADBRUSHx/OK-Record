@@ -1,5 +1,17 @@
 # OK-Record Release Notes
 
+## OK-Record v1.0.5 - 2026-09-25
+
+### 中文
+
+- 录制时切到其他 Photoshop 文档，现在会暂时停止采样并等待原文档；切回后按完整间隔自动继续，不再中断录制或弹出失败提示。
+- 采样始终绑定开始录制的文档，避免切换过程中把其他文档画面写入原时间线。手动暂停仍需手动继续。
+
+### English
+
+- Switching to another Photoshop document during recording now suspends sampling until the original document is active again. Recording resumes after a full interval without a failure alert.
+- Capture remains bound to the original document so another document cannot enter its timeline. Manual pause still requires manual resume.
+
 ## OK-Record v1.0.4 - 2026-07-18
 
 ### 中文

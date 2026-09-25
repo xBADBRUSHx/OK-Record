@@ -410,14 +410,14 @@
       </div>
 
       <h2 id="download">1. 下载哪个版本</h2>
-      <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4" target="_blank" rel="noopener">Win OK-Record v1.0.4</a></p>
+      <p>下载页面：<a href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5" target="_blank" rel="noopener">Win OK-Record v1.0.5</a></p>
       <p><strong>★ 仅支持 Photoshop 2023 24.4.0 或更高版本。</strong></p>
       <p>Release 页面里有两个 <code>.ccx</code> 安装文件：</p>
       <ul>
         <li><span class="step-title">OK-Record_with-ffmpeg.ccx</span>：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。</li>
         <li><span class="step-title">OK-Record.ccx</span>：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。</li>
       </ul>
-      <p>插件打开面板时会检查 <code>update.json</code>。如果发现新版本，绘画计时行右侧会出现蓝色“可更新”按钮，点击后可以选择 GitHub 或网盘下载新版安装文件。</p>
+      <p>插件打开面板时会检查 <code>update.json</code>。如果发现新版本，绘画计时行右侧会出现蓝色“可更新”按钮，点击后可以从 GitHub 下载新版安装文件。</p>
       <p>如果你不确定选哪个，就下载 <code>OK-Record_with-ffmpeg.ccx</code>。</p>
 
       <h2 id="install">2. 安装插件</h2>
@@ -454,6 +454,7 @@
       <p>开始录制前，先把 Photoshop 文档保存为本地 PSD/PSB 文件。保存过的 PSD/PSB 即使当前画布还有未保存修改，也可以继续录制。</p>
       <p>如果文档从未保存到本地目录，点击开始录制会提示先保存，不会写入序列帧。</p>
       <p>录制中关闭当前 PSD/PSB 会正常结束录制，不会把文档关闭误报为未保存；关闭其他文档不会停止当前录制。</p>
+      <p>录制中切到其他文档时，原文档的时间线会等待，不会采样其他文档。切回原文档后会自动重新计时采样；如果手动暂停，则需要手动继续。</p>
       <p>可以在保存文档后手动指定 OK-Record 保存目录。没有手动指定时，OK-Record 会自动存放到 Photoshop 文档的保存路径附近；手动指定只对当前 PSD/PSB 生效。需要让增量 PSD/PSB 续写旧项目时，请在那个文件里再次指定同一个 OK-Record 保存目录。</p>
       <p>录制失败、手动采样失败、导出完成或导出失败时，插件会弹出提醒窗口。关闭弹窗后，面板底部仍会保留详情信息，方便选中并复制给开发者排查。</p>
 
@@ -694,7 +695,7 @@
         "：推荐普通用户下载。已经内置 FFmpeg，安装后可以直接导出视频。": ": recommended for most users. FFmpeg is included, so you can export videos immediately after installation.",
         "：轻量版。适合已经安装 FFmpeg，或者知道如何配置 FFmpeg 的用户。": ": lightweight version. Use it if FFmpeg is already installed or you know how to configure FFmpeg yourself.",
         "插件打开面板时会检查": "When the panel opens, the plugin checks",
-        "。如果发现新版本，绘画计时行右侧会出现蓝色“可更新”按钮，点击后可以选择 GitHub 或网盘下载新版安装文件。": ". If a newer version is found, a blue \"Update\" button appears at the right side of the painting-timer row. Click it to choose GitHub or netdisk download.",
+        "。如果发现新版本，绘画计时行右侧会出现蓝色“可更新”按钮，点击后可以从 GitHub 下载新版安装文件。": ". If a newer version is found, a blue \"Update\" button appears at the right side of the painting-timer row. Click it to download the new installer from GitHub.",
         "。": ".",
         "如果你不确定选哪个，就下载": "If you are not sure which one to choose, download the",
         "版本。": "version.",
@@ -717,6 +718,7 @@
         "开始录制前，先把 Photoshop 文档保存为本地 PSD/PSB 文件。保存过的 PSD/PSB 即使当前画布还有未保存修改，也可以继续录制。": "Before recording, save the Photoshop document as a local PSD/PSB file. A saved PSD/PSB can keep recording even when the current canvas has unsaved edits.",
         "如果文档从未保存到本地目录，点击开始录制会提示先保存，不会写入序列帧。": "If the document has never been saved to a local folder, clicking Start Recording shows a save-first warning and does not write sequence frames.",
         "录制中关闭当前 PSD/PSB 会正常结束录制，不会把文档关闭误报为未保存；关闭其他文档不会停止当前录制。": "Closing the current PSD/PSB while recording ends recording normally instead of misreporting the document as unsaved. Closing another document does not stop the current recording.",
+        "录制中切到其他文档时，原文档的时间线会等待，不会采样其他文档。切回原文档后会自动重新计时采样；如果手动暂停，则需要手动继续。": "Switching to another document while recording puts the original timeline on hold without capturing the other document. Returning to the original document automatically starts a new sampling interval. A manual pause still requires a manual resume.",
         "可以在保存文档后手动指定 OK-Record 保存目录。没有手动指定时，OK-Record 会自动存放到 Photoshop 文档的保存路径附近；手动指定只对当前 PSD/PSB 生效。需要让增量 PSD/PSB 续写旧项目时，请在那个文件里再次指定同一个 OK-Record 保存目录。": "After saving the document, you can manually choose the OK-Record save folder. If you do not choose one manually, OK-Record saves near the saved Photoshop document; a manual choice applies only to the current PSD/PSB. To continue an incremental PSD/PSB in an older project, choose the same OK-Record save folder again in that file.",
         "录制失败、手动采样失败、导出完成或导出失败时，插件会弹出提醒窗口。关闭弹窗后，面板底部仍会保留详情信息，方便选中并复制给开发者排查。": "When recording fails, manual capture fails, export completes, or export fails, the plugin shows an alert dialog. After closing the dialog, the panel keeps the details at the bottom so you can select and copy them for troubleshooting.",
         "面板最上方的绘画计时用于单独统计实际绘画时间。它只记录你画画的时间，不会影响序列帧录制和视频导出。": "The painting timer at the top of the panel separately tracks actual painting time. It only tracks painting time and does not affect image sequence recording or video export.",

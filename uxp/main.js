@@ -100,7 +100,7 @@ const CLEAR_RECORDING_PANEL_MENU_ID = "clearRecordingTimeline";
 const UPDATE_MANIFEST_SCHEMA = "ok-record.update-manifest.v1";
 const UPDATE_MANIFEST_URL = "https://xbadbrushx.github.io/OK-Record/update.json";
 const UPDATE_RELEASES_URL_PREFIX = "https://github.com/xBADBRUSHx/OK-Record/releases/";
-const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4";
+const DEFAULT_UPDATE_RELEASE_PAGE_URL = "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5";
 const RECORDING_TIMELINE_ID = "Timeline";
 const STEP_FRAME_FILENAME_PREFIX = "step_";
 const STEP_FRAME_INDEX_DIGITS = 3;
@@ -155,6 +155,7 @@ let paintingTimerDisplayButtonNode = null;
 let recorderState = createInitialRecorderState();
 let paintingTimerState = createInitialPaintingTimerState();
 let recordingLoopActive = false;
+let recordingDocumentAway = false;
 let recordingPauseRequested = false;
 let captureTimerId = null;
 let idleCaptureDeadlineTimerId = null;
@@ -304,6 +305,7 @@ async function stopRecordingRuntimeSchedulers(options = {}) {
   stopRecorderHistoryPoll();
   clearScheduledCapture();
   clearDocumentCloseRecheck();
+  recordingDocumentAway = false;
   await releaseIdleCaptureListener();
   if (options.resetDocumentSignature) {
     recorderDocumentSignature = "";
@@ -380,6 +382,10 @@ function markDocumentDirty(eventName, options) {
   if (!force && !recordingLoopActive) {
     return;
   }
+  if (recordingLoopActive && activeRecordingContext &&
+      getActiveDocumentDescriptor().documentId !== activeRecordingContext.documentId) {
+    return;
+  }
 
   documentChangeGeneration += 1;
   setRecorderState({
@@ -400,6 +406,10 @@ async function captureNow() {
 
   try {
     if (wasRecording) {
+      if (inspectActiveRecordingContinuity().state === RECORDING_CONTINUITY_STATES.away) {
+        suspendRecordingForDocumentSwitch();
+        return null;
+      }
       clearScheduledCapture();
       assertActiveRecordingContextStillCurrent();
     }
@@ -423,7 +433,16 @@ async function captureNow() {
       updateControlState();
       setStatus(formatRecorderStatus("录制已暂停"));
     } else if (recordingLoopActive) {
-      scheduleNextCapture("录制：手动采样完成");
+      const continuity = await reconcileActiveRecordingDocument();
+      if (continuity.state === RECORDING_CONTINUITY_STATES.away) {
+        suspendRecordingForDocumentSwitch();
+      } else if (continuity.state === RECORDING_CONTINUITY_STATES.current) {
+        scheduleNextCapture("录制：手动采样完成");
+      } else if (continuity.state === RECORDING_CONTINUITY_STATES.unavailable) {
+        deferScheduledCaptureForDocumentContext("录制：手动采样完成", {}, 1);
+      } else if (continuity.state === RECORDING_CONTINUITY_STATES.changed) {
+        throw new Error(DOCUMENT_CONTEXT_CHANGED_MESSAGE);
+      }
     }
 
     return result;
@@ -474,6 +493,7 @@ async function startRecording() {
     resetRecordingDocumentCloseRequest();
     recordingPauseRequested = false;
     recordingLoopActive = true;
+    recordingDocumentAway = false;
     activeRecordingContext = documentContext;
     recorderDocumentSignature = getActiveDocumentHistorySignature();
     startRecorderHistoryPoll();
@@ -584,6 +604,7 @@ async function resumeRecording() {
     resetRecordingDocumentCloseRequest();
     recordingPauseRequested = false;
     recordingLoopActive = true;
+    recordingDocumentAway = false;
     activeRecordingContext = documentContext;
     recorderDocumentSignature = getActiveDocumentHistorySignature();
     startRecorderHistoryPoll();
@@ -1472,6 +1493,10 @@ async function runScheduledCapture(label, options) {
     if (continuity.state === RECORDING_CONTINUITY_STATES.closed || !recordingLoopActive) {
       return null;
     }
+    if (continuity.state === RECORDING_CONTINUITY_STATES.away) {
+      suspendRecordingForDocumentSwitch();
+      return null;
+    }
     if (continuity.state === RECORDING_CONTINUITY_STATES.unavailable) {
       const retryCount = Math.max(0, Math.floor(Number(options && options.documentContextRetryCount) || 0));
       if (retryCount < DOCUMENT_CONTEXT_RECHECK_MAX_ATTEMPTS) {
@@ -1515,7 +1540,20 @@ async function runScheduledCapture(label, options) {
     }
 
     if (recordingLoopActive) {
-      scheduleNextCapture("Recording");
+      const nextContinuity = await reconcileActiveRecordingDocument();
+      if (nextContinuity.state === RECORDING_CONTINUITY_STATES.away) {
+        suspendRecordingForDocumentSwitch();
+      } else if (nextContinuity.state === RECORDING_CONTINUITY_STATES.current) {
+        if (recordingDocumentAway) {
+          resumeRecordingAfterDocumentReturn();
+        } else {
+          scheduleNextCapture("Recording");
+        }
+      } else if (nextContinuity.state === RECORDING_CONTINUITY_STATES.unavailable) {
+        deferScheduledCaptureForDocumentContext(label, options, 1);
+      } else if (nextContinuity.state === RECORDING_CONTINUITY_STATES.changed) {
+        throw new Error(DOCUMENT_CONTEXT_CHANGED_MESSAGE);
+      }
     } else if (recorderState.state === RECORDER_STATES.recording) {
       setRecorderState(recorderDomain.pauseRecordingState(recorderState));
       updateControlState();
@@ -1528,6 +1566,10 @@ async function runScheduledCapture(label, options) {
         inspectActiveRecordingContinuity();
       if (continuity.state === RECORDING_CONTINUITY_STATES.closed) {
         await stopRecordingAfterDocumentClose({ captureSettled: true });
+        return null;
+      }
+      if (continuity.state === RECORDING_CONTINUITY_STATES.away) {
+        suspendRecordingForDocumentSwitch();
         return null;
       }
     }
@@ -1627,6 +1669,28 @@ function deferScheduledCaptureForDocumentContext(label, options, retryCount) {
   setStatus(formatRecorderStatus(`${label}：正在等待 Photoshop 完成文档状态更新`));
 }
 
+function suspendRecordingForDocumentSwitch() {
+  if (!recordingLoopActive || recordingDocumentAway) {
+    return;
+  }
+  recordingDocumentAway = true;
+  clearScheduledCapture();
+  if (!isRecorderBusy()) {
+    setRecorderState({ state: RECORDER_STATES.recording, nextCaptureAt: "", lastError: "" });
+  }
+  updateControlState();
+  setStatus(formatRecorderStatus("已切换到其他文档；等待切回原文档后继续采样"));
+}
+
+function resumeRecordingAfterDocumentReturn() {
+  if (!recordingLoopActive || !recordingDocumentAway || isRecorderBusy()) {
+    return;
+  }
+  recordingDocumentAway = false;
+  detectRecorderDocumentChange("documentReturn");
+  scheduleNextCapture("已切回录制文档；下次到达间隔时采样");
+}
+
 async function captureStepFrame(options) {
   const core = photoshop.core;
   const label = options.label;
@@ -1643,12 +1707,15 @@ async function captureStepFrame(options) {
     setStatus(formatRecorderStatus(`${label}：正在读取原图尺寸合成图...`));
     await waitForPanelRender();
 
-    const outputDir = await getStepOutputDirNativePath();
+    const documentContext = recordingLoopActive ? activeRecordingContext : null;
+    const outputDir = documentContext ? documentContext.stepOutputDir : await getStepOutputDirNativePath();
+    const documentID = Number(documentContext ? documentContext.documentId : getActiveDocumentDescriptor().documentId);
     const modalStartedAtMs = nowMs();
     const capture = await core.executeAsModal(
       captureCompositeForFrameRead,
       createCaptureExecuteAsModalOptions(commandName, {
         targetWidth: 0,
+        documentID,
       }),
     );
     const modalMs = elapsedMsSince(modalStartedAtMs);
@@ -1748,6 +1815,7 @@ async function captureFrame(options) {
       captureCompositeForFrameRead,
       createCaptureExecuteAsModalOptions(commandName, {
         targetWidth: captureTargetWidth,
+        documentID: Number(documentContext.documentId),
       }),
     );
     modalReadCompleted = true;
@@ -2148,10 +2216,13 @@ async function captureCompositeForFrameRead(executionContext, descriptor) {
 
 function createFrameCapturePixelOptions(descriptor) {
   const targetWidth = getFrameCaptureTargetWidth(descriptor);
+  const documentID = Number(descriptor && descriptor.documentID);
+  const options = documentID > 0 ? { documentID } : {};
   if (targetWidth <= 0) {
-    return {};
+    return options;
   }
   return {
+    ...options,
     targetSize: {
       width: targetWidth,
     },
@@ -2179,7 +2250,8 @@ async function getRecorderOutputDirNativePath() {
 }
 
 async function getRecordingsRootDirNativePath() {
-  return requireCurrentRecordingContext().recordingsRootDir;
+  return recordingLoopActive && activeRecordingContext ?
+    activeRecordingContext.recordingsRootDir : requireCurrentRecordingContext().recordingsRootDir;
 }
 
 function getActiveDocumentDescriptor() {
@@ -2299,9 +2371,10 @@ function resetRecordingDocumentCloseRequest() {
 }
 
 async function getStepOutputDirNativePath() {
-  return pathPolicy.resolveStepOutputDir({
-    recorderOutputDir: await getRecorderOutputDirNativePath(),
-  });
+  if (recordingLoopActive && activeRecordingContext) {
+    return activeRecordingContext.stepOutputDir;
+  }
+  return pathPolicy.resolveStepOutputDir({ recorderOutputDir: await getRecorderOutputDirNativePath() });
 }
 
 function createInitialRecorderState() {
@@ -2658,18 +2731,22 @@ function updatePanelSettingsInputs() {
   updateCaptureResolutionPresetInput();
 }
 
+function getRecordingStatusContext() {
+  return recordingLoopActive && activeRecordingContext ? activeRecordingContext : createCurrentRecordingContext();
+}
+
 function formatProjectOutputDir() {
-  const context = createCurrentRecordingContext();
+  const context = getRecordingStatusContext();
   return context.ok ? context.outputDir : "请先保存本地 PSD/PSB 文档";
 }
 
 function formatRecordingsOutputDir() {
-  const context = createCurrentRecordingContext();
+  const context = getRecordingStatusContext();
   return context.ok ? context.recordingsRootDir : `OK-Record 保存目录下的 ${RECORDINGS_ROOT_DIR_NAME}`;
 }
 
 function formatStepOutputDir() {
-  const context = createCurrentRecordingContext();
+  const context = getRecordingStatusContext();
   return context.ok ? context.stepOutputDir : `OK-Record 保存目录下的 ${DEFAULT_STEP_OUTPUT_DIR_NAME}`;
 }
 
@@ -2705,6 +2782,20 @@ function startRecorderHistoryPoll() {
   recorderHistoryPollId = setInterval(() => {
     if (!recordingLoopActive) {
       stopRecorderHistoryPoll();
+      return;
+    }
+    const continuity = inspectActiveRecordingContinuity();
+    if (continuity.state === RECORDING_CONTINUITY_STATES.away) {
+      suspendRecordingForDocumentSwitch();
+      return;
+    }
+    if (recordingDocumentAway) {
+      if (continuity.state === RECORDING_CONTINUITY_STATES.current) {
+        resumeRecordingAfterDocumentReturn();
+      }
+      return;
+    }
+    if (continuity.state !== RECORDING_CONTINUITY_STATES.current) {
       return;
     }
     detectRecorderDocumentChange("historyStateChanged");
@@ -3656,6 +3747,9 @@ function getRecordingIndicatorClassName() {
   if (isRecordingPaused() || recordingPauseRequested) {
     return "ok-record-record-indicator-paused";
   }
+  if (recordingDocumentAway) {
+    return "ok-record-record-indicator-paused";
+  }
   if (recordingLoopActive || recorderState.state === RECORDER_STATES.recording) {
     return "ok-record-record-indicator-active";
   }
@@ -3668,6 +3762,9 @@ function formatRecordingControlLabel() {
   }
   if (isRecordingPaused() || recordingPauseRequested) {
     return `暂停录制 ${getRecordingFrameCountText()}`;
+  }
+  if (recordingDocumentAway) {
+    return `等待原文档 ${getRecordingFrameCountText()}`;
   }
   if (recordingLoopActive || recorderState.state === RECORDER_STATES.recording) {
     return `录制中 ${getRecordingFrameCountText()}`;
@@ -3938,7 +4035,8 @@ function updateControlState() {
     panelView.renderRecordingStatusLabel(startRecordingButtonNode, getRecordingButtonViewState());
     const recordingActionLabel = paused || recordingPauseRequested ?
       "继续录制" :
-      (activeRecordingSession ? "暂停录制" : "开始录制");
+      (recordingDocumentAway ? "暂停等待中的录制" :
+        (activeRecordingSession ? "暂停录制" : "开始录制"));
     startRecordingButtonNode.title = recordingActionLabel;
     startRecordingButtonNode.setAttribute("aria-label", recordingActionLabel);
     setControlDisabled(startRecordingButtonNode, busy && !activeRecordingSession);
@@ -3950,7 +4048,7 @@ function updateControlState() {
       "ok-record-step-status-button",
     );
     panelView.renderStepCaptureButtonLabel(captureNowButtonNode, getStepCaptureButtonViewState());
-    setControlDisabled(captureNowButtonNode, busy);
+    setControlDisabled(captureNowButtonNode, busy || recordingDocumentAway);
   }
   if (paintingTimerDisplayButtonNode) {
     const timerActionLabel = getPaintingTimerActionLabel();

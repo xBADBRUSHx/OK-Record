@@ -111,7 +111,36 @@ assert.strictEqual(
     activeDocumentReferenceOpen: true,
   }).state,
   recordingContext.RECORDING_CONTINUITY_STATES.changed,
-  "an open locked document with a different active context must classify as a document switch",
+  "a path change without a distinct Photoshop document id must not be treated as a safe document switch",
+);
+
+const lockedContext = recordingContext.createRecordingContext({
+  documentPath: "E:\\Paint\\Character.psd",
+  documentId: 42,
+});
+for (const otherDocument of [
+  recordingContext.createRecordingContext({ documentPath: "E:\\Paint\\Other.psd", documentId: 43 }),
+  recordingContext.createRecordingContext({ documentAvailable: true, documentPath: "", documentId: 43 }),
+  recordingContext.createRecordingContext({ documentPath: "E:\\Paint\\Character.psd", documentId: 43 }),
+]) {
+  assert.strictEqual(
+    recordingContext.classifyRecordingContinuity({
+      activeContext: lockedContext,
+      currentContext: otherDocument,
+      activeDocumentReferenceOpen: true,
+    }).state,
+    recordingContext.RECORDING_CONTINUITY_STATES.away,
+    "another open Photoshop document must suspend capture regardless of its save path",
+  );
+}
+assert.strictEqual(
+  recordingContext.classifyRecordingContinuity({
+    activeContext: lockedContext,
+    currentContext: recordingContext.createRecordingContext({ documentPath: "E:\\Paint\\Renamed.psd", documentId: 42 }),
+    activeDocumentReferenceOpen: true,
+  }).state,
+  recordingContext.RECORDING_CONTINUITY_STATES.changed,
+  "changing the locked document path must remain a recording identity error",
 );
 
 assert.strictEqual(

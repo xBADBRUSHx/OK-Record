@@ -613,7 +613,7 @@ assert(localDocumentation.includes("截图待放"), "local documentation must ke
 assert(localDocumentation.includes("images/02-install-ccx.jpg"), "local documentation must expose the Creative Cloud install screenshot");
 assert(localDocumentation.includes("images/02-install-ccx_2.jpg"), "local documentation must expose the Creative Cloud installed-state screenshot");
 assert(localDocumentation.includes("images/03-open-photoshop-panel.png.jpg"), "local documentation must expose the Photoshop panel screenshot");
-assert(localDocumentation.includes('href="https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4"'), "local documentation must link to the GitHub Release download page");
+assert(localDocumentation.includes(`href="${updateManifest.releasePageUrl}"`), "local documentation must link to the GitHub Release download page");
 assert(localDocumentation.includes("Download page:"), "local documentation must translate the GitHub Release download link label");
 assert.strictEqual(manifest.host.minVersion, "24.4.0", "manifest minimum Photoshop version must match the stable Imaging API requirement");
 assert(localDocumentation.includes("★ 仅支持 Photoshop 2023 24.4.0 或更高版本。"), "local documentation must state the Photoshop version requirement in the download section");

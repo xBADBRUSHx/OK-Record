@@ -221,6 +221,8 @@ async function run() {
   global.Event = MockEvent;
   const setupCalls = [];
   const timers = [];
+  const intervals = [];
+  const pixelSourceDocumentIds = [];
   const addonCalls = {
     clearRecording: 0,
     exportSession: 0,
@@ -247,6 +249,7 @@ async function run() {
   let failExportSession = false;
   let hostModalFailureCount = 0;
   let closeRecordingDocumentAfterNextContinuityCheck = false;
+  let switchDocumentDuringPixelRead = null;
   const executeAsModalOptions = [];
   const confirmMock = (message) => {
     confirmMessages.push(String(message || ""));
@@ -385,7 +388,13 @@ async function run() {
       },
     },
     imaging: {
-      async getPixels() {
+      async getPixels(options) {
+        pixelSourceDocumentIds.push(Number(options && options.documentID));
+        if (switchDocumentDuringPixelRead) {
+          const switchDocument = switchDocumentDuringPixelRead;
+          switchDocumentDuringPixelRead = null;
+          switchDocument();
+        }
         return {
           sourceBounds: {
             left: 0,
@@ -654,15 +663,20 @@ async function run() {
     console,
     document,
     Event: MockEvent,
-    setTimeout(callback) {
+    setTimeout(callback, delay) {
+      callback.mockDelay = delay;
       timers.push(callback);
       return timers.length;
     },
     clearTimeout() {},
-    setInterval() {
-      return 1;
+    setInterval(callback, delay) {
+      const interval = { callback, delay, active: true };
+      intervals.push(interval);
+      return interval;
     },
-    clearInterval() {},
+    clearInterval(interval) {
+      interval.active = false;
+    },
     confirm: confirmMock,
     alert: alertMock,
     fetch: fetchMock,
@@ -694,7 +708,7 @@ async function run() {
   assert.strictEqual(openExternalCalls.length, 1, "download-page flyout menu must open one external URL");
   assert.strictEqual(
     openExternalCalls[0].url,
-    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.4",
+    "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5",
     "download-page flyout menu must open the current public release before a newer manifest is fetched",
   );
 
@@ -955,19 +969,68 @@ async function run() {
   );
 
   await waitForCondition(() => timers.length > 0, "host-modal retry success must schedule the next timed capture");
-  photoshopMock.app.activeDocument.path = path.join(repoRoot, "tests", "out", "other.psd");
-  photoshopMock.app.activeDocument.id = 2;
+  const resumedRecordingDocument = photoshopMock.app.activeDocument;
+  photoshopMock.app.activeDocument = {
+    ...resumedRecordingDocument,
+    path: path.join(repoRoot, "tests", "out", "other.psd"),
+    id: 2,
+  };
+  openDocumentIds.add(2);
   const scheduledCapture = timers.shift();
   assert(scheduledCapture, "recording restart must schedule the next timed capture");
+  const alertCountBeforeDocumentSwitch = alertMessages.length;
   scheduledCapture();
   await flushMicrotasks();
   assert.strictEqual(writeFrameCount, 4, "switching Photoshop documents while recording must not write into the locked timeline");
-  assert.strictEqual(document.querySelector(".ok-record-export-notice-title").textContent, "定时采样失败", "document-switch failure must show a capture failure notice");
-  assert(alertMessages.some((message) => message.includes("定时采样失败") && message.includes("当前 Photoshop 文档已经变化")), "timed recording failure must show a blocking alert with the document-change error");
-
-  photoshopMock.app.activeDocument.path = newSavedDocumentPath;
-  photoshopMock.app.activeDocument.id = 3;
-  await waitForCondition(() => exportButton.disabled === false, "export button must re-enable after the recording failure settles");
+  assert.strictEqual(alertMessages.length, alertCountBeforeDocumentSwitch, "switching to another open document must not show a capture failure alert");
+  assert.strictEqual(recordingButton.querySelector(".ok-record-record-text").textContent, "等待原文档 4 帧", "document switch must display the automatic waiting state");
+  assert.strictEqual(manualStepButton.disabled, true, "manual capture must be unavailable while the locked document is away");
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 4 帧", "manual pause must override automatic document waiting");
+  photoshopMock.app.activeDocument = resumedRecordingDocument;
+  const pausedPoll = intervals.filter((interval) => interval.delay === 1000).pop();
+  pausedPoll.callback();
+  await flushMicrotasks();
+  assert.strictEqual(recordingButton.querySelector(".ok-record-record-text").textContent, "暂停录制 4 帧", "returning after manual pause must not auto-resume");
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 4 帧", "manual resume must restore recording");
+  photoshopMock.app.activeDocument = {
+    ...resumedRecordingDocument,
+    path: path.join(repoRoot, "tests", "out", "other.psd"),
+    id: 2,
+  };
+  const recorderPoll = intervals.filter((interval) => interval.active && interval.delay === 1000).pop();
+  assert(recorderPoll, "active recording must poll the locked document identity");
+  recorderPoll.callback();
+  await flushMicrotasks();
+  assert.strictEqual(recordingButton.querySelector(".ok-record-record-text").textContent, "等待原文档 4 帧", "switch detection must stop the sampling timer before it fires");
+  timers.length = 0;
+  photoshopMock.app.activeDocument = resumedRecordingDocument;
+  recorderPoll.callback();
+  await flushMicrotasks();
+  assert.strictEqual(recordingButton.querySelector(".ok-record-record-text").textContent, "录制中 4 帧", "returning to the locked document must restart recording automatically");
+  await runNextTimer("document return must schedule the next timed capture");
+  await waitForCondition(() => writeFrameCount === 5, "recording must capture the locked document after return");
+  assert.strictEqual(pixelSourceDocumentIds[pixelSourceDocumentIds.length - 1], 3, "recording pixels must be read by the locked Photoshop document id");
+  assert.strictEqual(writeFrameOutputDirs[writeFrameOutputDirs.length - 1], newSavedDocumentDefaultOutputDir, "the resumed frame must stay in the locked document project");
+  photoshopMock.app.activeDocument = {
+    ...resumedRecordingDocument,
+    path: path.join(repoRoot, "tests", "out", "other.psd"),
+    id: 2,
+  };
+  recorderPoll.callback();
+  await flushMicrotasks();
+  documentChangeListener.listener("paint", {});
+  timers.length = 0;
+  photoshopMock.app.activeDocument = resumedRecordingDocument;
+  recorderPoll.callback();
+  await flushMicrotasks();
+  await runNextTimer("returning after editing another document must still check the original document's dirty state");
+  assert.strictEqual(writeFrameCount, 5, "editing another document must not create a duplicate frame in the locked timeline");
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 5 帧", "recording must pause before export");
+  timers.length = 0;
+  await waitForCondition(() => exportButton.disabled === false, "export button must re-enable after recording pauses");
   assert.strictEqual(exportButton.getAttribute("aria-disabled"), "false", "export button aria-disabled must clear before export");
   assert((exportButton.eventListeners.get("click") || []).length > 0, "export button must retain its click listener");
   exportButton.dispatchEvent(new MockEvent("click"));
@@ -985,14 +1048,14 @@ async function run() {
 
   failExportSession = false;
   recordingButton.dispatchEvent(new MockEvent("click"));
-  await waitForCondition(() => writeFrameCount === 5, "recording can restart after export failure");
+  await waitForCondition(() => writeFrameCount === 6, "recording can restart after export failure");
   await waitForCondition(
-    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 5 帧",
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "录制中 6 帧",
     "recording after export failure must settle before paused directory selection",
   );
   recordingButton.dispatchEvent(new MockEvent("click"));
   await waitForCondition(
-    () => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 5 帧",
+    () => recordingButton.querySelector(".ok-record-record-text").textContent === "暂停录制 6 帧",
     "recording must pause before choosing a new project directory",
   );
   assert.strictEqual(chooseProjectOutputDirButton.disabled, false, "paused recording must allow choosing a new OK-Record project directory");
@@ -1008,6 +1071,45 @@ async function run() {
     "开始录制",
     "choosing a project directory while paused must end the paused recording state",
   );
+
+  timers.length = 0;
+  recordingButton.dispatchEvent(new MockEvent("click"));
+  await waitForCondition(() => writeFrameCount === 7, "recording must start in the newly selected project");
+  await waitForCondition(() => timers.some((timer) => timer.mockDelay === 1000), "recording must schedule capture after the initial frame");
+  const lockedDocumentBeforeInFlightSwitch = photoshopMock.app.activeDocument;
+  const alertCountBeforeInFlightSwitch = alertMessages.length;
+  switchDocumentDuringPixelRead = () => {
+    photoshopMock.app.activeDocument = {
+      ...lockedDocumentBeforeInFlightSwitch,
+      path: path.join(repoRoot, "tests", "out", "other.psd"),
+      id: 2,
+    };
+  };
+  documentChangeListener.listener("paint", {});
+  const inFlightCaptureTimerIndex = timers.findIndex((timer) => timer.mockDelay === 1000);
+  const inFlightCaptureTimer = timers.splice(inFlightCaptureTimerIndex, 1)[0];
+  inFlightCaptureTimer();
+  await waitForCondition(() => writeFrameCount === 8, "the in-flight locked frame must finish committing");
+  await waitForCondition(() => recordingButton.querySelector(".ok-record-record-text").textContent === "等待原文档 8 帧", "a switch during pixel read must suspend the next capture");
+  assert.strictEqual(pixelSourceDocumentIds[pixelSourceDocumentIds.length - 1], 3, "in-flight pixel reads must target the locked document id");
+  assert.strictEqual(alertMessages.length, alertCountBeforeInFlightSwitch, "a switch during pixel read must not report a recording failure");
+  photoshopMock.app.activeDocument = lockedDocumentBeforeInFlightSwitch;
+  const inFlightRecorderPoll = intervals.filter((interval) => interval.active && interval.delay === 1000).pop();
+  inFlightRecorderPoll.callback();
+  await flushMicrotasks();
+  assert.strictEqual(recordingButton.querySelector(".ok-record-record-text").textContent, "录制中 8 帧", "the in-flight recording must resume after returning to its document");
+  photoshopMock.app.activeDocument = {
+    ...lockedDocumentBeforeInFlightSwitch,
+    path: path.join(repoRoot, "tests", "out", "other.psd"),
+    id: 2,
+  };
+  inFlightRecorderPoll.callback();
+  await flushMicrotasks();
+  const alertCountBeforeAwayClose = alertMessages.length;
+  openDocumentIds.delete(3);
+  documentCloseListener.listener("close", {});
+  await waitForCondition(() => recordingButton.querySelector(".ok-record-button-label").textContent === "开始录制", "closing the locked document while another document is active must end recording");
+  assert.strictEqual(alertMessages.length, alertCountBeforeAwayClose, "closing the locked document while away must not show a failure alert");
 
   entrypoints.panels.okRecordPanel.show();
   await flushMicrotasks();
