@@ -4,6 +4,6 @@
   "releaseDate": "2026-09-25",
   "releasePageUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/tag/v1.0.5",
   "downloadUrl": "https://github.com/xBADBRUSHx/OK-Record/releases/download/v1.0.5/OK-Record_with-ffmpeg.ccx",
-  "netdiskUrl": "",
+  "netdiskUrl": "https://pan.baidu.com/s/1xOP-BOT9yUuLjEKVITRvGg?pwd=9527",
   "summary": "v1.0.5 修复切换 Photoshop 文档会中断录制的问题。切到其他文档时暂停采样，切回原文档后按完整间隔继续；已保存的序列帧不受影响。普通用户建议下载 OK-Record_with-ffmpeg.ccx 安装文件。"
 }
